@@ -1,7 +1,44 @@
 # PFLD
 
-## run by CPU
+## requirements
+ - download WFLW images and annotations
+ (WFLW)[https://wywu.github.io/projects/LAB/WFLW.html]
+ - untar and set WFLW in `/data/`
+ - get `model.meta` and set in `models2/models/`
+ (Google drive)[https://drive.google.com/open?id=1Ol-JWNS3bVTD3hV6aIbTm6cNzGOWiw2U]
+ - install pipenv
+ - install library and shell
+ ```
+ pipenv install
+ pipenv shell
+ ```
+
+## preprocess WFLW
+```
+cp euler_angles_utils.py ./data/
+python data/SetPreparation.py
+```
+
+## train
+```
+sh train.sh
+```
+
+## test
+```
+python test_model.py
+```
+
+## camera test
+```
+python camera.py
+```
+
+## Run by CPU ex
+```
 CUDA_VISIBLE_DEVICES= python test_model.py
+```
+
 
 ## original README
 Table 1:  
