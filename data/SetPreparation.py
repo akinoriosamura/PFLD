@@ -63,6 +63,7 @@ class ImageDate():
                 assert len(lines) == 1
                 mirror_idx = lines[0].strip().split(',')
                 mirror_idx = list(map(int, mirror_idx))
+        # import pdb; pdb.set_trace()
         xy = np.min(self.landmark, axis=0).astype(np.int32) 
         zz = np.max(self.landmark, axis=0).astype(np.int32)
         wh = zz - xy + 1

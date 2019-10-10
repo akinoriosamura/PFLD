@@ -3,16 +3,16 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-print('pid: {}     GPU: {}'.format(os.getpid(), os.environ['CUDA_VISIBLE_DEVICES']))
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+# print('pid: {}     GPU: {}'.format(os.getpid(), os.environ['CUDA_VISIBLE_DEVICES']))
 import tensorflow as tf
 import numpy as np
 import cv2
 from mtcnn.detect_face import MTCNN
 
 def main():
-    meta_file = './models/model8/model.meta'
-    ckpt_file = './models/model8/model.ckpt-63234'
+    meta_file = './models2/models/model.meta'
+    ckpt_file = './models2/models/model.ckpt-195'
     image_size = 112
     with tf.Graph().as_default():
         with tf.Session() as sess:
@@ -83,7 +83,7 @@ def main():
 
                     pre_landmark = pre_landmark.reshape(-1, 2) * [size, size]
                     for (x, y) in pre_landmark.astype(np.int32):
-                        cv2.circle(image, (x1 + x, y1 + y), 1, (0, 0, 255))
+                        cv2.circle(image, (x1 + x, y1 + y), 5, (0, 0, 255))
                 cv2.imshow('0', image)
                 if cv2.waitKey(10) == 27:
                     break
