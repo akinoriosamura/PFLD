@@ -2,11 +2,11 @@
 
 ## requirements
  - download WFLW images and annotations  
- (WFLW)[https://wywu.github.io/projects/LAB/WFLW.html]
+ [WFLW](https://wywu.github.io/projects/LAB/WFLW.html)
 
  - untar and set WFLW in `/data/`  
  - get `model.meta` and set in `models2/models/`  
- (Google drive)[https://drive.google.com/open?id=1Ol-JWNS3bVTD3hV6aIbTm6cNzGOWiw2U]  
+ [Google drive](https://drive.google.com/open?id=1Ol-JWNS3bVTD3hV6aIbTm6cNzGOWiw2U)  
  
  - install pipenv  
 
