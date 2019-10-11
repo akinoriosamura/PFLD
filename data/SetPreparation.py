@@ -63,40 +63,50 @@ class ImageDate():
                 assert len(lines) == 1
                 mirror_idx = lines[0].strip().split(',')
                 mirror_idx = list(map(int, mirror_idx))
-        # import pdb; pdb.set_trace()
+        # ========画像を顔枠ら辺でcropし、輪郭点を調査========
         xy = np.min(self.landmark, axis=0).astype(np.int32) 
         zz = np.max(self.landmark, axis=0).astype(np.int32)
         wh = zz - xy + 1
 
         center = (xy + wh/2).astype(np.int32)
         img = cv2.imread(self.path)
+        # 顔枠のサイズ
         boxsize = int(np.max(wh)*1.2)
+        # 顔枠の左上を原点とした中心までの座標
         xy = center - boxsize//2
         x1, y1 = xy
         x2, y2 = xy + boxsize
         height, width, _ = img.shape
+        # 顔枠の左上 or 画像の左上縁
         dx = max(0, -x1)
         dy = max(0, -y1)
         x1 = max(0, x1)
         y1 = max(0, y1)
 
+        # 顔枠の右下 or 画像の右下縁
         edx = max(0, x2 - width)
         edy = max(0, y2 - height)
         x2 = min(width, x2)
         y2 = min(height, y2)
 
+        # 顔枠で切り抜き
         imgT = img[y1:y2, x1:x2]
         if (dx > 0 or dy > 0 or edx > 0 or edy > 0):
+            # 画像をコピーし周りに境界を作成
             imgT = cv2.copyMakeBorder(imgT, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
         if imgT.shape[0] == 0 or imgT.shape[1] == 0:
+            # 顔枠サイズが0なら
             imgTT = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+            # 表示して確認
             for x, y in (self.landmark+0.5).astype(np.int32):
                 cv2.circle(imgTT, (x, y), 1, (0, 0, 255))
             cv2.imshow('0', imgTT)
             if cv2.waitKey(0) == 27:
                 exit()
         if is_train:
+            # 学習データに対してはリサイズ
             imgT = cv2.resize(imgT, (self.image_size, self.image_size))
+        # クロップサイズに輪郭点ラベルを合わせる
         landmark = (self.landmark - xy)/boxsize
         assert (landmark >= 0).all(), str(landmark) + str([dx, dy])
         assert (landmark <= 1).all(), str(landmark) + str([dx, dy])
@@ -104,6 +114,7 @@ class ImageDate():
         self.landmarks.append(landmark)
 
         if is_train:
+            # =========データ拡張=========
             while len(self.imgs) < repeat:
                 angle = np.random.randint(-20, 20)
                 cx, cy = center
@@ -145,6 +156,7 @@ class ImageDate():
                 self.imgs.append(imgT)
                 self.landmarks.append(landmark)
     def save_data(self, path, prefix):
+        # attributeは特にいじらず保存
         attributes = [self.pose, self.expression, self.illumination, self.make_up, self.occlusion, self.blur]
         attributes = np.asarray(attributes, dtype=np.int32)
         attributes_str = ' '.join(list(map(str, attributes)))
@@ -154,9 +166,10 @@ class ImageDate():
             assert landmark.shape == (98, 2)
             save_path = os.path.join(path, prefix+'_'+str(i)+'.png')
             assert not os.path.exists(save_path), save_path
+            # imgsにcrop画像を保存
             cv2.imwrite(save_path, img)
-
             
+            # tracked pointsからpitch yaw rollを計算し保存
             euler_angles_landmark = []
             for index in TRACKED_POINTS:
                 euler_angles_landmark.append([landmark[index][0]*img.shape[0],landmark[index][1]*img.shape[1]])

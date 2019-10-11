@@ -90,6 +90,15 @@ if __name__ == '__main__':
         for anno in annotations:
             landmarks = np.asarray(list(map(float, anno[:136])), dtype=np.float32).reshape(-1, 2)
             bbox = np.asarray(list(map(int, anno[136:140])), dtype=np.int32)
+
+            def sort_box(box):
+                # WFLW bbox: x_min_rect y_min_rect x_max_rect y_max_rect
+                # growing: top="49" left="49" width="193" height="194"
+                import pdb; pdb.set_trace()
+                box = [box[1], box[0], box[1] + box[2], box[0] + box[3]]
+                return box
+            bbox = np.asarray(list(map(sort_box, bbox)))
+            import pdb; pdb.set_trace()
             attribs = list(map(int, anno[140:146]))
             img_path = os.path.join(img_dir, anno[146])
             img = cv2.imread(img_path)
