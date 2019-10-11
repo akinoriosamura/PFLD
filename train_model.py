@@ -186,7 +186,7 @@ def train(sess, epoch_size, epoch, list_ops):
 
         '''
         calculate the w_n: return the batch [-1,1]
-        c :
+        #200: 姿态(pose)         0->正常姿态(normal pose)          1->大的姿态(large pose)
         #201: 表情(expression)   0->正常表情(normal expression)    1->夸张的表情(exaggerate expression)
         #202: 照度(illumination) 0->正常照明(normal illumination)  1->极端照明(extreme illumination)
         #203: 化妆(make-up)      0->无化妆(no make-up)             1->化妆(make-up)

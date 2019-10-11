@@ -5,6 +5,8 @@ import sys
 import json
 import xml.etree.ElementTree as ET 
 
+from sklearn.model_selection import train_test_split
+
 
 def extract_annotations(labels_xml):
     # crerate attributes and shape each label
@@ -58,7 +60,7 @@ if __name__ == '__main__':
         img_dir: image dir
     
     Save:
-        txt: label lines text
+        txt: label lines text(train text : test text = 90 : 10)
             - landmarkはそのまま
             - bboxは要検討
             - attributeは適当に
@@ -100,9 +102,21 @@ if __name__ == '__main__':
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
-    save_path = xml[:-3] + "txt"
+    annotations = np.array(annotations)
+    train_annos, test_annos = train_test_split(annotations, test_size=0.1)
+    import pdb; pdb.set_trace()
+
+    # save train text
+    save_path = xml[:-4] + "_train.txt"
     with open(save_path, mode='w') as f:
-        for idx, anno in enumerate(annotations):
+        for idx, anno in enumerate(train_annos):
+            str_anno = " ".join(anno) + "\n"
+            f.write(str_anno)
+
+    # save test text
+    save_path = xml[:-4] + "_test.txt"
+    with open(save_path, mode='w') as f:
+        for idx, anno in enumerate(test_annos):
             str_anno = " ".join(anno) + "\n"
             f.write(str_anno)
 
