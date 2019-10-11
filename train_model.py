@@ -29,8 +29,8 @@ def main(args):
     print(args)
     np.random.seed(args.seed)
     with tf.Graph().as_default():
-        train_dataset, num_train_file = DateSet(args.file_list, args, debug, args.num_labels)
-        test_dataset, num_test_file = DateSet(args.test_list, args, debug, args.num_labels)
+        train_dataset, num_train_file = DateSet(args.file_list, args, args.num_labels, debug)
+        test_dataset, num_test_file = DateSet(args.test_list, args, args.num_labels, debug)
         list_ops = {}
 
         batch_train_dataset = train_dataset.batch(args.batch_size).repeat()

@@ -36,6 +36,7 @@ def gen_data(file_list, num_labels):
         line = line.strip().split()
         path = line[0]
         landmark = line[1:num_labels*2+1] # 1:197
+        print("labels: ", num_labels*2+1)
         attribute = line[num_labels*2+1:num_labels*2+7] # 197:203
         euler_angle = line[num_labels*2+7:num_labels*2+10] # 203:206
 

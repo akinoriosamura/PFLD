@@ -9,7 +9,7 @@ lr=0.000000001
 
 # --pretrained_model=${pre_model} \
 # CUDA_VISIBLE_DEVICES='' \
-python -u train_model.py --model_dir=${save_model} \
+nohup python -u train_model.py --model_dir=${save_model} \
                                --file_list=${file_list} \
                                --test_list=${test_list} \
                                --num_labels=${num_labels} \
@@ -18,6 +18,6 @@ python -u train_model.py --model_dir=${save_model} \
                                --debug=False \
                                --image_size=112 \
                                --batch_size=128 \
-                               > ${logs} 2>&1
+                               > ${logs} 2>&1 &
 tail -f ${logs}
  
