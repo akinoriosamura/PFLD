@@ -94,7 +94,6 @@ if __name__ == '__main__':
             def sort_box(box):
                 # WFLW bbox: x_min_rect y_min_rect x_max_rect y_max_rect
                 # growing: top="49" left="49" width="193" height="194"
-                import pdb; pdb.set_trace()
                 box = [box[1], box[0], box[1] + box[2], box[0] + box[3]]
                 return box
             bbox = np.asarray(list(map(sort_box, bbox)))

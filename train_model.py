@@ -29,8 +29,8 @@ def main(args):
     print(args)
     np.random.seed(args.seed)
     with tf.Graph().as_default():
-        train_dataset, num_train_file = DateSet(args.file_list, args, debug)
-        test_dataset, num_test_file = DateSet(args.test_list, args, debug)
+        train_dataset, num_train_file = DateSet(args.file_list, args, debug, args.num_labels)
+        test_dataset, num_test_file = DateSet(args.test_list, args, debug, args.num_labels)
         list_ops = {}
 
         batch_train_dataset = train_dataset.batch(args.batch_size).repeat()
@@ -69,7 +69,7 @@ def main(args):
 
         image_batch = tf.placeholder(tf.float32, shape=(None, args.image_size, args.image_size, 3),
                                      name='image_batch')
-        landmark_batch = tf.placeholder(tf.float32, shape=(None, 196), name='landmark_batch')
+        landmark_batch = tf.placeholder(tf.float32, shape=(None, args.num_labels*2), name='landmark_batch')
         attribute_batch = tf.placeholder(tf.int32, shape=(None, 6), name='attribute_batch')
         euler_angles_gt_batch = tf.placeholder(tf.float32, shape=(None, 3), name='euler_angles_gt_batch')
 
@@ -251,8 +251,18 @@ def test(sess, list_ops, args):
                     landmarks[k][(count_point * 2):(count_point * 2 + 2)]
                 error = np.sqrt(np.sum(error_diff * error_diff))
                 error_all_points += error
-            interocular_distance = np.sqrt(np.sum(pow((landmarks[k][120:122] - landmarks[k][144:146]), 2)))
-            error_norm = error_all_points / (interocular_distance * 98)
+            # 目の両端
+            if args.num_labels == 98:
+                left_eye_edge = 60
+                right_eye_edge = 72
+            elif args.num_labels == 68:
+                left_eye_edge = 36
+                right_eye_edge = 45
+            else:
+                print("eye error")
+                exit()
+            interocular_distance = np.sqrt(np.sum(pow((landmarks[k][left_eye_edge*2:left_eye_edge*2+2] - landmarks[k][right_eye_edge*2:right_eye_edge*2+2]), 2)))
+            error_norm = error_all_points / (interocular_distance * args.num_labels)
             landmark_error += error_norm
             if error_norm >= 0.1:
                 landmark_01_num += 1
@@ -334,6 +344,7 @@ def parse_arguments(argv):
     parser.add_argument('--seed', type=int, default=666)
     parser.add_argument('--max_epoch', type=int, default=1000)
     parser.add_argument('--image_size', type=int, default=112)
+    parser.add_argument('--num_labels', type=int, default=98)
     parser.add_argument('--image_channels', type=int, default=3)
     parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--pretrained_model', type=str, default=None)
