@@ -7,6 +7,8 @@ verify_ssl = true
 flake8 = "*"
 pycodestyle = "*"
 mypy = "*"
+autopep8 = "*"
+pep8 = "*"
 
 [packages]
 absl-py = "==0.7.1"
@@ -53,6 +55,7 @@ Pillow = "==5.4.1"
 PyWavelets = "==1.0.2"
 Werkzeug = "==0.15.1"
 scikit-learn = "*"
+configparser = "*"
 
 [requires]
 python_version = "3.6"

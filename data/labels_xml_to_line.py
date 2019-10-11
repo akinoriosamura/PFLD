@@ -2,8 +2,7 @@ import os
 import numpy as np
 import cv2
 import sys
-import json
-import xml.etree.ElementTree as ET 
+import xml.etree.ElementTree as ET
 
 from sklearn.model_selection import train_test_split
 
@@ -43,7 +42,7 @@ def extract_annotations(labels_xml):
             print(img_file)
             error_files.append(img_file)
             continue
-    
+
     return annotations
 
 
@@ -58,7 +57,7 @@ if __name__ == '__main__':
             <part name="02" x="58" y="148" />
             ...
         img_dir: image dir
-    
+
     Save:
         txt: label lines text(train text : test text = 90 : 10)
             - landmarkはそのまま
@@ -85,12 +84,12 @@ if __name__ == '__main__':
         exit()
 
     annotations = extract_annotations(labels_xml)
-    
+
     if DEBUG:
         annotations = annotations[:10]
         for anno in annotations:
             landmarks = np.asarray(list(map(float, anno[:136])), dtype=np.float32).reshape(-1, 2)
-            bbox = np.asarray(list(map(int, anno[136:140])),dtype=np.int32)
+            bbox = np.asarray(list(map(int, anno[136:140])), dtype=np.int32)
             attribs = list(map(int, anno[140:146]))
             img_path = os.path.join(img_dir, anno[146])
             img = cv2.imread(img_path)
@@ -104,7 +103,6 @@ if __name__ == '__main__':
 
     annotations = np.array(annotations)
     train_annos, test_annos = train_test_split(annotations, test_size=0.1)
-    import pdb; pdb.set_trace()
 
     # save train text
     save_path = xml[:-4] + "_train.txt"
