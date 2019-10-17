@@ -1,9 +1,12 @@
 import tensorflow as tf
 import numpy as np
 import cv2
+import time
 
-def DateSet(file_list, args, num_labels, debug=False):
-    file_list, landmarks, attributes,euler_angles = gen_data(file_list, num_labels)
+def DateSet(file_list, args, debug=False):
+    print("labels; ", args.num_labels)
+    time.sleep(3)
+    file_list, landmarks, attributes,euler_angles = gen_data(file_list, args.num_labels)
     if debug:
         n = args.batch_size * 10
         file_list = file_list[:n]
@@ -36,7 +39,6 @@ def gen_data(file_list, num_labels):
         line = line.strip().split()
         path = line[0]
         landmark = line[1:num_labels*2+1] # 1:197
-        print("labels: ", num_labels*2+1)
         attribute = line[num_labels*2+1:num_labels*2+7] # 197:203
         euler_angle = line[num_labels*2+7:num_labels*2+10] # 203:206
 

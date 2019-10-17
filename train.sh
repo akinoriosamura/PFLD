@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-file_list=data/train_WFLW_68_data/list.txt
-test_list=data/test_WFLW_68_data/list.txt
-save_model=./models2/68/1010/save_model
-pre_model=./models2/1004/pre_model
-logs=./models2/log_1010.txt
-num_labels=68
+num_labels=98
+file_list=data/train_original_data/list.txt
+test_list=data/test_original_data/list.txt
+save_model=./models2/save_models/original/1017
+pre_model=./models2/trained_models/1004
+logs=./models2/log_1017.txt
 lr=0.000000001
 
 # --pretrained_model=${pre_model} \

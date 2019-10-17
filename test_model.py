@@ -8,20 +8,25 @@ import os
 import tensorflow as tf
 import numpy as np
 import cv2
+import shutil
 
 from generate_data import gen_data
 
 def main():
-    target = "1010"
-    meta_file = './models2/models/model.meta'
-    ckpt_file = './models2/models/model.ckpt-195'
+    num_labels = 98
+    saved_target = "./models2/models/WFLW_98/1004/"
+    meta_file = saved_target + 'model.meta'
+    ckpt_file = saved_target + 'model.ckpt-195'
     # test_list = './data/300w_image_list.txt'
 
     image_size = 112
 
-    image_files = 'data/test_data/list_sample.txt'
-    out_dir = 'result/' + target
+    image_files = 'data/test_WFLW_68_data/list_sample.txt'
+    out_dir = 'sample_test_result'
     if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+    else:
+        shutil.rmtree(out_dir)
         os.mkdir(out_dir)
 
     with tf.Graph().as_default():
@@ -44,7 +49,7 @@ def main():
             """
             landmark_total = graph.get_tensor_by_name('pfld_inference/fc/BiasAdd:0')
 
-            file_list, train_landmarks, train_attributes, euler_angles = gen_data(image_files)
+            file_list, train_landmarks, train_attributes, euler_angles = gen_data(image_files, num_labels)
             print(file_list)
             for file in file_list:
                 filename = os.path.split(file)[-1]

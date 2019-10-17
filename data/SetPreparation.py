@@ -309,11 +309,12 @@ if __name__ == '__main__':
         - train annotaion list
     """
 
+    # ex: python SetPreparation.py WFLW 98
     if len(sys.argv) == 3:
         dataset = sys.argv[1]
         num_labels = sys.argv[2]
     else:
-        print("please set arg(dataset_name num_labels)")
+        print("please set arg(dataset_name num_labels) ex: python SetPreparation.py WFLW 98")
         exit()
 
     root_dir = os.path.dirname(os.path.realpath(__file__))

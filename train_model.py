@@ -7,7 +7,7 @@ from model2 import create_model
 from generate_data import DateSet
 import time
 import math
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 # print('pid: {}     GPU: {}'.format(os.getpid(), os.environ['CUDA_VISIBLE_DEVICES']))
@@ -17,8 +17,8 @@ import numpy as np
 import cv2
 import argparse
 import sys
-import matplotlib
-matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('Agg')
 
 
 log_dir = './tensorboard'
@@ -26,11 +26,12 @@ log_dir = './tensorboard'
 
 def main(args):
     debug = (args.debug == 'True')
-    print(args)
+    print("args: ", args)
     np.random.seed(args.seed)
+    time.sleep(3)
     with tf.Graph().as_default():
-        train_dataset, num_train_file = DateSet(args.file_list, args, args.num_labels, debug)
-        test_dataset, num_test_file = DateSet(args.test_list, args, args.num_labels, debug)
+        train_dataset, num_train_file = DateSet(args.file_list, args, debug)
+        test_dataset, num_test_file = DateSet(args.test_list, args, debug)
         list_ops = {}
 
         batch_train_dataset = train_dataset.batch(args.batch_size).repeat()
@@ -69,6 +70,8 @@ def main(args):
 
         image_batch = tf.placeholder(tf.float32, shape=(None, args.image_size, args.image_size, 3),
                                      name='image_batch')
+        print("args: ", args.num_labels*2)
+        time.sleep(3)
         landmark_batch = tf.placeholder(tf.float32, shape=(None, args.num_labels*2), name='landmark_batch')
         attribute_batch = tf.placeholder(tf.int32, shape=(None, 6), name='attribute_batch')
         euler_angles_gt_batch = tf.placeholder(tf.float32, shape=(None, 3), name='euler_angles_gt_batch')
@@ -152,6 +155,7 @@ def main(args):
 
             merged = tf.summary.merge_all()
             train_write = tf.summary.FileWriter(log_dir, sess.graph)
+
             for epoch in range(epoch_start, args.max_epoch):
                 start = time.time()
                 train_L, train_L2 = train(sess, epoch_size, epoch, list_ops)
@@ -176,6 +180,11 @@ def main(args):
                      train_loss_l2.assign(train_L2)
                      ])
                 train_write.add_summary(summary, epoch)
+
+                # save graphdef file to pb
+                graphdef_n = num_labels + "result.pb"
+                graph_def = graph_util.convert_variables_to_constants(sess, g.as_graph_def(), ["result"])
+                tf.train.write_graph(graph_def,".",graphdef_n,as_text=False)
 
 
 def train(sess, epoch_size, epoch, list_ops):
@@ -261,6 +270,10 @@ def test(sess, list_ops, args):
             else:
                 print("eye error")
                 exit()
+            print("eye: ", left_eye_edge)
+            print("eye; ", right_eye_edge)
+            print("labels: ", args.num_labels)
+            time.sleep(3)
             interocular_distance = np.sqrt(np.sum(pow((landmarks[k][left_eye_edge*2:left_eye_edge*2+2] - landmarks[k][right_eye_edge*2:right_eye_edge*2+2]), 2)))
             error_norm = error_all_points / (interocular_distance * args.num_labels)
             landmark_error += error_norm

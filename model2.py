@@ -6,6 +6,8 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from utils import LandmarkImage,LandmarkImage_98
 
+import time
+
 
 def mobilenet_v2(input, weight_decay, batch_norm_params):
     features = {}
@@ -211,6 +213,8 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
 def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
 
     coefficient = 1
+    print("labels; ", num_labels)
+    time.sleep(3)
     with tf.variable_scope('pfld_inference'):
         features = {}
         with slim.arg_scope([slim.convolution2d, slim.separable_conv2d], \
@@ -400,6 +404,8 @@ def create_model(input, landmark, phase_train, args):
     }
 
     landmark_dim = int(landmark.get_shape()[-1])
+    print("labels; ", args.num_labels)
+    time.sleep(3)
     features ,landmarks_pre = pfld_inference(input, args.weight_decay, batch_norm_params, args.num_labels)
     # loss
     landmarks_loss = tf.reduce_sum(tf.square(landmarks_pre - landmark), axis=1)
