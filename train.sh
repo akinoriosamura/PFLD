@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
-save_model=./models2/model4
-pre_model=./models2/model3
+save_model=./models2/save_models/original/1017
+pre_model=./models2/trained_models/WFLW_98/1004
+file_list=data/train_original_data/list.txt
+test_list=data/test_original_data/list.txt
 logs=./models2/log4.txt
 lr=0.000000001
 
-CUDA_VISIBLE_DEVICES='' \
+# CUDA_VISIBLE_DEVICES='' \
 nohup python -u train_model.py --model_dir=${save_model} \
                                --pretrained_model=${pre_model} \
+                               --file_list=${file_list} \
+                               --test_list=${test_list} \
                                --learning_rate=${lr} \
                                --level=L1 \
                                --debug=False \

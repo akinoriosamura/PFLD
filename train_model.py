@@ -7,6 +7,7 @@ import os
 # print('pid: {}     GPU: {}'.format(os.getpid(), os.environ['CUDA_VISIBLE_DEVICES']))
 
 import tensorflow as tf
+from tensorflow.python.framework import graph_util
 import numpy as np
 import cv2
 import argparse
@@ -27,7 +28,7 @@ def main(args):
     debug = (args.debug == 'True')
     print(args)
     np.random.seed(args.seed)
-    with tf.Graph().as_default():
+    with tf.Graph().as_default() as g:
         train_dataset, num_train_file = DateSet(args.file_list, args, debug)
         test_dataset, num_test_file = DateSet(args.test_list, args, debug)
         list_ops = {}
@@ -152,7 +153,7 @@ def main(args):
             train_write = tf.summary.FileWriter(log_dir, sess.graph)
             for epoch in range(epoch_start, args.max_epoch):
                 start = time.time()
-                train_L, train_L2 = train(sess, epoch_size, epoch, list_ops)
+                train_L, train_L2 = train(sess, epoch_size, epoch, list_ops, g)
                 print("train time: {}" .format(time.time()-start))
 
                 checkpoint_path = os.path.join(model_dir, 'model.ckpt')
@@ -175,7 +176,13 @@ def main(args):
                      ])
                 train_write.add_summary(summary, epoch)
 
-def train(sess, epoch_size, epoch, list_ops):
+                # save graphdef file to pb
+                print("Save frozen graph")
+                graphdef_n = "original_98_frozen.pb"
+                graph_def = graph_util.convert_variables_to_constants(sess, g.as_graph_def(), ["landmark_L1", "landmark_L2", "landmark_L3", "landmark_L4", "landmark_L5"])
+                tf.train.write_graph(graph_def,model_dir,graphdef_n,as_text=False)
+
+def train(sess, epoch_size, epoch, list_ops, g):
 
     image_batch, landmarks_batch, attribute_batch, euler_batch = list_ops['train_next_element']
 
@@ -212,6 +219,13 @@ def train(sess, epoch_size, epoch, list_ops):
 
             Loss = 'Loss {:2.3f}\tL2_loss {:2.3f}'.format(loss, L2_loss)
             print('{}\t{}\t lr {:2.3}'.format(Epoch, Loss, lr))
+
+        # save graphdef file to pb
+        print("Save frozen graph")
+        graphdef_n = "original_98_frozen.pb"
+        graph_def = graph_util.convert_variables_to_constants(sess, g.as_graph_def(), ["pfld_inference/fc/BiasAdd"])
+        tf.train.write_graph(graph_def,"./",graphdef_n,as_text=False)
+
     return loss, L2_loss
 
 def test(sess, list_ops, args):

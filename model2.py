@@ -381,6 +381,7 @@ def pfld_inference(input, weight_decay, batch_norm_params):
 
             avg_pool2 = slim.avg_pool2d(conv7,[conv7.get_shape()[1],conv7.get_shape()[2]],stride=1)
             print(avg_pool2.name,avg_pool2.get_shape())
+            # pfld_inference/AvgPool2D_1/AvgPool:0
 
             s1 = slim.flatten(avg_pool1)
             s2 = slim.flatten(avg_pool2)
@@ -388,6 +389,8 @@ def pfld_inference(input, weight_decay, batch_norm_params):
             s3 = slim.flatten(conv8)
             multi_scale = tf.concat([s1,s2,s3],1)
             landmarks = slim.fully_connected(multi_scale,num_outputs=196,activation_fn=None,scope='fc')
+            print(landmarks.name,landmarks.get_shape())
+            # pfld_inference/fc/BiasAdd:0
             return features ,landmarks
 
 def create_model(input, landmark, phase_train, args):
@@ -433,6 +436,8 @@ def create_model(input, landmark, phase_train, args):
         print(fc1.name,fc1.get_shape())
         euler_angles_pre = slim.fully_connected(fc1,num_outputs=3, activation_fn=None, scope='pfld_fc2')
         print(euler_angles_pre.name,euler_angles_pre.get_shape())
+        # pfld_fc2/BatchNorm/Reshape_1:0
+        print("==========finish define graph===========")
 
     # return landmarks_loss, landmarks, heatmap_loss, HeatMaps
     return landmarks_pre,landmarks_loss, euler_angles_pre
