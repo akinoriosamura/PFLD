@@ -10,7 +10,6 @@ lr=0.000000001
 # --pretrained_model=${pre_model} \
 # CUDA_VISIBLE_DEVICES='' \
 nohup python -u train_model.py --model_dir=${save_model} \
-                               --pretrained_model=${pre_model} \
                                --file_list=${file_list} \
                                --test_list=${test_list} \
                                --num_labels=${num_labels} \

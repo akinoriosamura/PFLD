@@ -17,7 +17,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
                             weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
                             biases_initializer=tf.zeros_initializer(),
                             weights_regularizer=slim.l2_regularizer(weight_decay),
-                            normalizer_fn=slim.batch_norm,
+                            normalizer_fn=tf.layers.batch_normalization,
                             normalizer_params=batch_norm_params,
                             padding='SAME'):
             print('Mobilnet input shape({}): {}'.format(input.name, input.get_shape()))
@@ -217,12 +217,13 @@ def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
     time.sleep(3)
     with tf.variable_scope('pfld_inference'):
         features = {}
+        # normalizer_fn=slim.batch_norm,
         with slim.arg_scope([slim.convolution2d, slim.separable_conv2d], \
                             activation_fn=tf.nn.relu6,\
                             weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
                             biases_initializer=tf.zeros_initializer(),
                             weights_regularizer=slim.l2_regularizer(weight_decay),
-                            normalizer_fn=slim.batch_norm,
+                            normalizer_fn=tf.layers.batch_normalization,
                             normalizer_params=batch_norm_params,
                             padding='SAME'):
             print('PFLD input shape({}): {}'.format(input.name, input.get_shape()))
@@ -396,12 +397,17 @@ def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
             return features ,landmarks
 
 def create_model(input, landmark, phase_train, args):
+    """
     batch_norm_params = {
         'decay': 0.995,
         'epsilon': 0.001,
         'updates_collections':  None,#tf.GraphKeys.UPDATE_OPS,
         'variables_collections': [tf.GraphKeys.TRAINABLE_VARIABLES],
         'is_training': phase_train
+    }
+    """
+    batch_norm_params = {
+        'training': phase_train
     }
 
     landmark_dim = int(landmark.get_shape()[-1])
@@ -420,7 +426,7 @@ def create_model(input, landmark, phase_train, args):
                         weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
                         biases_initializer=tf.zeros_initializer(),
                         weights_regularizer=slim.l2_regularizer(args.weight_decay),
-                        normalizer_fn=slim.batch_norm,
+                        normalizer_fn=tf.layers.batch_normalization,
                         normalizer_params=batch_norm_params):
         pfld_input = features['auxiliary_input']
         net_aux = slim.convolution2d(pfld_input, 128, [3, 3], stride=2, scope='pfld_conv1')
