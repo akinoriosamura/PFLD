@@ -24,6 +24,49 @@ import sys
 
 log_dir = './tensorboard'
 
+def adjust_graph(graph_def):
+
+    # fix nodes
+    """
+    for node in graph_def.node:
+        if node.op == 'RefSwitch':
+            node.op = 'Switch'
+            for index in range(len(node.input)):
+                if 'moving_' in node.input[index]:
+                    node.input[index] = node.input[index] + '/read'
+        elif node.op == 'AssignSub':
+            node.op = 'Sub'
+            if 'use_locking' in node.attr:
+                del node.attr['use_locking']
+    """
+    for node in graph_def.node:
+        if node.op == 'RefSwitch':
+            node.op = 'Switch'
+            for index in range(len(node.input)):
+                if 'moving_' in node.input[index]:
+                    node.input[index] = node.input[index] + '/read'
+        elif node.op == 'AssignSub':
+            node.op = 'Sub'
+            if 'use_locking' in node.attr:
+                del node.attr['use_locking']
+        elif node.op == 'AssignAdd':
+            node.op = 'Add'
+            if 'use_locking' in node.attr:
+                del node.attr['use_locking']
+        elif node.op == 'Assign':
+            node.op = 'Identity'
+            if 'use_locking' in node.attr:
+                del node.attr['use_locking']
+            if 'validate_shape' in node.attr:
+                del node.attr['validate_shape']
+            if len(node.input) == 2:
+                # input0: ref: Should be from a Variable node. May be uninitialized.
+                # input1: value: The value to be assigned to the variable.
+                node.input[0] = node.input[1]
+                del node.input[1]
+
+    return graph_def
+
 
 def main(args):
     debug = (args.debug == 'True')
@@ -69,6 +112,7 @@ def main(args):
         epoch_size = num_train_file // args.batch_size
         print('Number of batches per epoch: {}'.format(epoch_size))
 
+        # input node
         image_batch = tf.placeholder(tf.float32, shape=(None, args.image_size, args.image_size, 3),
                                      name='image_batch')
         print("args: ", args.num_labels*2)
@@ -82,6 +126,7 @@ def main(args):
         list_ops['attribute_batch'] = attribute_batch
         list_ops['euler_angles_gt_batch'] = euler_angles_gt_batch
 
+        # input node
         phase_train_placeholder = tf.placeholder(tf.bool, name='phase_train')
         list_ops['phase_train_placeholder'] = phase_train_placeholder
 
@@ -90,6 +135,11 @@ def main(args):
         #                                                                                phase_train_placeholder, args)
         landmarks_pre, landmarks_loss, euler_angles_pre = create_model(image_batch, landmark_batch,
                                                                        phase_train_placeholder, args)
+
+        # adjust graph
+        print("######### adjust ############")
+        graph_def = adjust_graph(g.as_graph_def())
+        tf.import_graph_def(graph_def)
 
         attributes_w_n = tf.to_float(attribute_batch[:, 1:6])
         # _num = attributes_w_n.shape[0]
@@ -158,16 +208,35 @@ def main(args):
             train_write = tf.summary.FileWriter(log_dir, sess.graph)
 
             for epoch in range(epoch_start, args.max_epoch):
-                start = time.time()
-                train_L, train_L2 = train(sess, epoch_size, epoch, list_ops, g)
-                print("train time: {}" .format(time.time() - start))
-
                 checkpoint_path = os.path.join(model_dir, 'model.ckpt')
                 metagraph_path = os.path.join(model_dir, 'model.meta')
                 saver.save(sess, checkpoint_path, global_step=epoch, write_meta_graph=False)
                 if not os.path.exists(metagraph_path):
                     saver.export_meta_graph(metagraph_path)
 
+                print("start save pre saved_model")
+                # adjust graph def
+
+                save_model_dir = os.path.join(model_dir, "SavedModelPre")
+                # tf.saved_model.simple_save(sess, save_model_dir, inputs={"image_batch": image_batch, "phase_train": phase_train_placeholder}, outputs={"pfld_inference/fc/BiasAdd": landmarks_pre})
+                
+                builder = tf.saved_model.builder.SavedModelBuilder(save_model_dir)
+                signature = tf.saved_model.predict_signature_def(
+                                {"image_batch": image_batch, "phase_train": phase_train_placeholder}, outputs={"pfld_inference/fc/BiasAdd": landmarks_pre}
+                                )
+
+                # using custom tag instead of: tags=[tf.saved_model.tag_constants.SERVING]
+                builder.add_meta_graph_and_variables(sess=sess,
+                                                    tags=[tf.saved_model.tag_constants.SERVING],
+                                                    signature_def_map={
+                                                        tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY: signature
+                                                        }
+                                                        )
+                builder.save()
+                
+                print("finish save pre saved_model")
+
+                print("test start")
                 start = time.time()
                 test_ME, test_FR, test_loss = test(sess, list_ops, args)
                 print("test time: {}" .format(time.time() - start))
@@ -181,12 +250,54 @@ def main(args):
                      train_loss_l2.assign(train_L2)
                      ])
                 train_write.add_summary(summary, epoch)
+                
+                print("train start")
+                start = time.time()
+                train_L, train_L2 = train(sess, epoch_size, epoch, list_ops, g)
+                print("train time: {}" .format(time.time() - start))
 
                 # save graphdef file to pb
-                print("Save frozen graph")
-                graphdef_n = "original_98_frozen.pb"
-                graph_def = graph_util.convert_variables_to_constants(sess, g.as_graph_def(), ["landmark_L1", "landmark_L2", "landmark_L3", "landmark_L4", "landmark_L5"])
-                tf.train.write_graph(graph_def,model_dir,graphdef_n,as_text=False)
+                #print("Save frozen graph")
+                #graphdef_n = "original_98_frozen.pb"
+                #graph_def = graph_util.convert_variables_to_constants(sess, g.as_graph_def(), ["pfld_inference/fc/BiasAdd"])
+                #tf.train.write_graph(graph_def,model_dir,graphdef_n,as_text=False)
+
+                # save SavedModels
+                print("start save saved_model")
+                save_model_dir = os.path.join(model_dir, "SavedModel")
+                # tf.saved_model.simple_save(sess, save_model_dir, inputs={"image_batch": image_batch, "phase_train": phase_train_placeholder}, outputs={"pfld_inference/fc/BiasAdd": landmarks_pre})
+                
+                builder = tf.saved_model.builder.SavedModelBuilder(save_model_dir)
+                signature = tf.saved_model.predict_signature_def(
+                                {"image_batch": image_batch, "phase_train": phase_train_placeholder}, outputs={"pfld_inference/fc/BiasAdd": landmarks_pre}
+                                )
+
+                # using custom tag instead of: tags=[tf.saved_model.tag_constants.SERVING]
+                builder.add_meta_graph_and_variables(sess=sess,
+                                                    tags=[tf.saved_model.tag_constants.SERVING],
+                                                    signature_def_map={
+                                                        tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY: signature
+                                                        }
+                                                        )
+                builder.save()
+                
+                print("finish save saved_model")
+
+                print("test start")
+                start = time.time()
+                test_ME, test_FR, test_loss = test(sess, list_ops, args)
+                print("test time: {}" .format(time.time() - start))
+
+                summary, _, _, _, _, _ = sess.run(
+                    [merged,
+                     test_mean_error.assign(test_ME),
+                     test_failure_rate.assign(test_FR),
+                     test_10_loss.assign(test_loss),
+                     train_loss.assign(train_L),
+                     train_loss_l2.assign(train_L2)
+                     ])
+                train_write.add_summary(summary, epoch)
+                
 
 def train(sess, epoch_size, epoch, list_ops, g):
 
@@ -240,7 +351,9 @@ def test(sess, list_ops, args):
     landmark_01_num = 0
 
     epoch_size = math.ceil(list_ops['num_test_file'] * 1.0 / args.batch_size)
+    print("test epoch size: ", epoch_size)
     for i in range(epoch_size):  # batch_num
+        print("start epoch: ", i)
         images, landmarks, attributes, eulers = sess.run([image_batch, landmarks_batch, attribute_batch, euler_batch])
         feed_dict = {
             list_ops['image_batch']: images,
@@ -271,9 +384,9 @@ def test(sess, list_ops, args):
             else:
                 print("eye error")
                 exit()
-            print("eye: ", left_eye_edge)
-            print("eye; ", right_eye_edge)
-            print("labels: ", args.num_labels)
+            # print("eye: ", left_eye_edge)
+            # print("eye; ", right_eye_edge)
+            # print("labels: ", args.num_labels)
             time.sleep(3)
             interocular_distance = np.sqrt(np.sum(pow((landmarks[k][left_eye_edge*2:left_eye_edge*2+2] - landmarks[k][right_eye_edge*2:right_eye_edge*2+2]), 2)))
             error_norm = error_all_points / (interocular_distance * args.num_labels)

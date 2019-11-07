@@ -1,6 +1,6 @@
 # `FROM nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04` でベースにする CUDA 環境を選ぶことができる。
 # 利用可能な CUDA 環境の一覧は https://hub.docker.com/r/nvidia/cuda/ にある。
-FROM nvidia/cuda:10.1-cudnn7-devel-ubuntu18.04
+FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
 
 # 自動アップグレード
 RUN apt-get update -y
@@ -33,4 +33,11 @@ ENV HOME /home/ubuntu
 
 ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 
-WORKDIR $HOME/
+COPY . /app
+
+WORKDIR /app
+
+# install pipenv
+# RUN pip install -U pip && \
+#     pip install pipenv && \
+#     pipenv install --dev --system

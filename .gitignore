@@ -10,3 +10,10 @@ pre_model
 logs
 tensorboard
 result
+*.pb
+data/test*data
+data/train*data
+models2/log*
+__pycache__/
+sample_test_result/
+models2/save_models/

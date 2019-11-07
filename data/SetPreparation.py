@@ -224,6 +224,7 @@ class ImageDate():
                 imgT = cv2.resize(imgT, (self.image_size, self.image_size))
 
                 if mirror is not None and np.random.choice((True, False)):
+                    print("There is Mirror file")
                     landmark[:, 0] = 1 - landmark[:, 0]
                     landmark = landmark[mirror_idx]
                     imgT = cv2.flip(imgT, 1)
@@ -327,6 +328,8 @@ if __name__ == '__main__':
     # 左右反転対象ラベル
     # なくてもいい
     Mirror_file = config.get(section, 'Mirror_file')
+    if Mirror_file == "None":
+        Mirror_file = None
     landmarkTrainDir = config.get(section, 'landmarkTrainDir')
     landmarkTestDir = config.get(section, 'landmarkTestDir')
     landmarkTestName = config.get(section, 'landmarkTestName')
