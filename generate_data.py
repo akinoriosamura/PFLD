@@ -1,9 +1,12 @@
 import tensorflow as tf
 import numpy as np
 import cv2
+import time
 
 def DateSet(file_list, args, debug=False):
-    file_list, landmarks, attributes,euler_angles = gen_data(file_list)
+    print("labels; ", args.num_labels)
+    time.sleep(3)
+    file_list, landmarks, attributes,euler_angles = gen_data(file_list, args.num_labels)
     if debug:
         n = args.batch_size * 10
         file_list = file_list[:n]
@@ -28,16 +31,16 @@ def DateSet(file_list, args, debug=False):
     dataset = dataset.shuffle(buffer_size=10000)
     return dataset, len(file_list)
 
-def gen_data(file_list):
+def gen_data(file_list, num_labels):
     with open(file_list,'r') as f:
         lines = f.readlines()
     filenames, landmarks,attributes,euler_angles = [], [], [],[]
     for line in lines:
         line = line.strip().split()
         path = line[0]
-        landmark = line[1:197]
-        attribute = line[197:203]
-        euler_angle = line[203:206]
+        landmark = line[1:num_labels*2+1] # 1:197
+        attribute = line[num_labels*2+1:num_labels*2+7] # 197:203
+        euler_angle = line[num_labels*2+7:num_labels*2+10] # 203:206
 
         landmark = np.asarray(landmark, dtype=np.float32)
         attribute = np.asarray(attribute, dtype=np.int32)
@@ -51,7 +54,7 @@ def gen_data(file_list):
     landmarks = np.asarray(landmarks, dtype=np.float32)
     attributes = np.asarray(attributes, dtype=np.int32)
     euler_angles = np.asarray(euler_angles,dtype=np.float32)
-    return (filenames, landmarks, attributes,euler_angles)
+    return (filenames, landmarks, attributes, euler_angles)
 
 
 if __name__ == '__main__':

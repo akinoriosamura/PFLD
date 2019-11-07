@@ -1,0 +1,14 @@
+version: '2.3'
+services:
+  tensorflow-gpu-1-14:
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+    build: .
+    container_name: tensorflow-gpu-1-14
+    volumes:
+      - ./:/usr/src/app
+      - /data:/data
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all

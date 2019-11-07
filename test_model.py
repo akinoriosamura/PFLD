@@ -4,22 +4,29 @@ from __future__ import print_function
 
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+# print('pid: {}     GPU: {}'.format(os.getpid(), os.environ['CUDA_VISIBLE_DEVICES']))
 import tensorflow as tf
 import numpy as np
 import cv2
+import shutil
 
 from generate_data import gen_data
 
 def main():
-    meta_file = './models2/trained_models/WFLW_98/1004/model.meta'
-    ckpt_file = './models2/trained_models/WFLW_98/1004/model.ckpt-195'
+    num_labels = 98
+    saved_target = "./models2/models/WFLW_98/1004/"
+    meta_file = saved_target + 'model.meta'
+    ckpt_file = saved_target + 'model.ckpt-195'
     # test_list = './data/300w_image_list.txt'
 
     image_size = 112
 
-    image_files = 'data/test_original_data/list_sample.txt'
+    image_files = 'data/test_WFLW_68_data/list_sample.txt'
     out_dir = 'sample_test_result'
     if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+    else:
+        shutil.rmtree(out_dir)
         os.mkdir(out_dir)
 
     with tf.Graph().as_default():
@@ -42,7 +49,7 @@ def main():
             """
             landmark_total = graph.get_tensor_by_name('pfld_inference/fc/BiasAdd:0')
 
-            file_list, train_landmarks, train_attributes, euler = gen_data(image_files)
+            file_list, train_landmarks, train_attributes, euler_angles = gen_data(image_files, num_labels)
             print(file_list)
             for file in file_list:
                 filename = os.path.split(file)[-1]
@@ -52,22 +59,25 @@ def main():
                 input = cv2.resize(input, (image_size, image_size))
                 input = input.astype(np.float32)/256.0
                 input = np.expand_dims(input, 0)
-                print(input.shape)
+                # print(input.shape)
 
                 feed_dict = {
                     images_placeholder: input,
                     phase_train_placeholder: False
                 }
 
+                import time
+                st = time.time()
                 pre_landmarks = sess.run(landmark_total, feed_dict=feed_dict)
-                import pdb;pdb.set_trace()
-                print(pre_landmarks)
+                # print(pre_landmarks)
+                print("elaps: ", time.time() - st)
                 pre_landmark = pre_landmarks[0]
 
                 h, w, _ = image.shape
                 pre_landmark = pre_landmark.reshape(-1, 2) * [h, w]
                 for (x, y) in pre_landmark.astype(np.int32):
                     cv2.circle(image, (x, y), 1, (0, 0, 255))
+                print(os.path.join(out_dir, filename))
                 cv2.imwrite(os.path.join(out_dir, filename), image)
 
 if __name__ == '__main__':

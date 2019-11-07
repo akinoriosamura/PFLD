@@ -6,6 +6,8 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from utils import LandmarkImage,LandmarkImage_98
 
+import time
+
 
 def mobilenet_v2(input, weight_decay, batch_norm_params):
     features = {}
@@ -208,9 +210,11 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
             features['feature6'] = conv7_4
     return features
 
-def pfld_inference(input, weight_decay, batch_norm_params):
+def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
 
     coefficient = 1
+    print("labels; ", num_labels)
+    time.sleep(3)
     with tf.variable_scope('pfld_inference'):
         features = {}
         with slim.arg_scope([slim.convolution2d, slim.separable_conv2d], \
@@ -388,9 +392,7 @@ def pfld_inference(input, weight_decay, batch_norm_params):
             #1*1*128
             s3 = slim.flatten(conv8)
             multi_scale = tf.concat([s1,s2,s3],1)
-            landmarks = slim.fully_connected(multi_scale,num_outputs=196,activation_fn=None,scope='fc')
-            print(landmarks.name,landmarks.get_shape())
-            # pfld_inference/fc/BiasAdd:0
+            landmarks = slim.fully_connected(multi_scale,num_outputs=num_labels*2,activation_fn=None,scope='fc')
             return features ,landmarks
 
 def create_model(input, landmark, phase_train, args):
@@ -403,7 +405,9 @@ def create_model(input, landmark, phase_train, args):
     }
 
     landmark_dim = int(landmark.get_shape()[-1])
-    features ,landmarks_pre = pfld_inference(input, args.weight_decay, batch_norm_params)
+    print("labels; ", args.num_labels)
+    time.sleep(3)
+    features ,landmarks_pre = pfld_inference(input, args.weight_decay, batch_norm_params, args.num_labels)
     # loss
     landmarks_loss = tf.reduce_sum(tf.square(landmarks_pre - landmark), axis=1)
     landmarks_loss = tf.reduce_mean(landmarks_loss)
