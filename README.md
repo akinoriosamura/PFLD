@@ -27,7 +27,8 @@
 ## preprocess WFLW
 ```
 cp euler_angles_utils.py ./data/
-python data/SetPreparation.py
+cd data
+python SetPreparation.py WFLW [label num]
 ```
 
 ## train
