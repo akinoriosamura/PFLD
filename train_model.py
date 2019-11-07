@@ -21,6 +21,8 @@ import sys
 # import matplotlib
 # matplotlib.use('Agg')
 
+GRAPH = None
+
 
 log_dir = './tensorboard'
 
@@ -73,7 +75,7 @@ def main(args):
     print("args: ", args)
     np.random.seed(args.seed)
     time.sleep(3)
-    with tf.Graph().as_default() as g:
+    with tf.Graph().as_default() as pre_g:
         train_dataset, num_train_file = DateSet(args.file_list, args, debug)
         test_dataset, num_test_file = DateSet(args.test_list, args, debug)
         list_ops = {}
@@ -136,11 +138,6 @@ def main(args):
         landmarks_pre, landmarks_loss, euler_angles_pre = create_model(image_batch, landmark_batch,
                                                                        phase_train_placeholder, args)
 
-        # adjust graph
-        print("######### adjust ############")
-        graph_def = adjust_graph(g.as_graph_def())
-        tf.import_graph_def(graph_def)
-
         attributes_w_n = tf.to_float(attribute_batch[:, 1:6])
         # _num = attributes_w_n.shape[0]
         mat_ratio = tf.reduce_mean(attributes_w_n, axis=0)
@@ -156,6 +153,19 @@ def main(args):
         loss_sum += L2_loss
 
         train_op, lr_op = train_model(loss_sum, global_step, num_train_file, args)
+
+
+        # adjust graph
+        """
+        print("######### adjust ############")
+        graph_def = adjust_graph(pre_g.as_graph_def())
+        print("============== adjusted ================")
+
+    new_g = tf.Graph()
+    with new_g.as_default() as g:
+        tf.import_graph_def(graph_def, name='')
+        """
+
 
         list_ops['landmarks'] = landmarks_pre
         list_ops['L2_loss'] = L2_loss
@@ -236,31 +246,10 @@ def main(args):
                 
                 print("finish save pre saved_model")
 
-                print("test start")
-                start = time.time()
-                test_ME, test_FR, test_loss = test(sess, list_ops, args)
-                print("test time: {}" .format(time.time() - start))
-
-                summary, _, _, _, _, _ = sess.run(
-                    [merged,
-                     test_mean_error.assign(test_ME),
-                     test_failure_rate.assign(test_FR),
-                     test_10_loss.assign(test_loss),
-                     train_loss.assign(train_L),
-                     train_loss_l2.assign(train_L2)
-                     ])
-                train_write.add_summary(summary, epoch)
-                
                 print("train start")
                 start = time.time()
                 train_L, train_L2 = train(sess, epoch_size, epoch, list_ops, g)
                 print("train time: {}" .format(time.time() - start))
-
-                # save graphdef file to pb
-                #print("Save frozen graph")
-                #graphdef_n = "original_98_frozen.pb"
-                #graph_def = graph_util.convert_variables_to_constants(sess, g.as_graph_def(), ["pfld_inference/fc/BiasAdd"])
-                #tf.train.write_graph(graph_def,model_dir,graphdef_n,as_text=False)
 
                 # save SavedModels
                 print("start save saved_model")
@@ -336,12 +325,6 @@ def train(sess, epoch_size, epoch, list_ops, g):
 
             Loss = 'Loss {:2.3f}\tL2_loss {:2.3f}'.format(loss, L2_loss)
             print('{}\t{}\t lr {:2.3}'.format(Epoch, Loss, lr))
-
-        # save graphdef file to pb
-        print("Save frozen graph")
-        graphdef_n = "original_98_frozen.pb"
-        graph_def = graph_util.convert_variables_to_constants(sess, g.as_graph_def(), ["pfld_inference/fc/BiasAdd"])
-        tf.train.write_graph(graph_def,"./",graphdef_n,as_text=False)
 
     return loss, L2_loss
 
