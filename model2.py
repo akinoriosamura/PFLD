@@ -9,7 +9,7 @@ from utils import LandmarkImage,LandmarkImage_98
 import time
 
 
-def mobilenet_v2(input, weight_decay, batch_norm_params):
+def mobilenet_v2(input, weight_decay, batch_norm_params, depth_multi):
     features = {}
     with tf.variable_scope('Mobilenet'):
         with slim.arg_scope([slim.convolution2d, slim.separable_conv2d], \
@@ -27,7 +27,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
             print(conv_1.name, conv_1.get_shape())
 
             # 48*48*32  56*56*32
-            conv2_1 = slim.separable_convolution2d(conv_1, num_outputs=None, stride=1, depth_multiplier=1,
+            conv2_1 = slim.separable_convolution2d(conv_1, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv2_1/dwise')
             print(conv2_1.name, conv2_1.get_shape())
             conv2_1 = slim.convolution2d(conv2_1, 16, [1, 1], stride=1, activation_fn=None,
@@ -37,7 +37,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
             # 48*48*16  56*56*16
             conv3_1 = slim.convolution2d(conv2_1, 96, [1, 1], stride=1, scope='conv3_1/expand')
             print(conv3_1.name, conv3_1.get_shape())
-            conv3_1 = slim.separable_convolution2d(conv3_1, num_outputs=None, stride=2, depth_multiplier=1,
+            conv3_1 = slim.separable_convolution2d(conv3_1, num_outputs=None, stride=2, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv3_1/dwise')
             print(conv3_1.name, conv3_1.get_shape())
             conv3_1 = slim.convolution2d(conv3_1, 24, [1, 1], stride=1, activation_fn=None,
@@ -46,7 +46,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
 
             conv3_2 = slim.convolution2d(conv3_1, 144, [1, 1], stride=1, scope='conv3_2/expand')
             print(conv3_2.name, conv3_2.get_shape())
-            conv3_2 = slim.separable_convolution2d(conv3_2, num_outputs=None, stride=1, depth_multiplier=1,
+            conv3_2 = slim.separable_convolution2d(conv3_2, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv3_2/dwise')
             print(conv3_2.name, conv3_2.get_shape())
             conv3_2 = slim.convolution2d(conv3_2, 24, [1, 1], stride=1, activation_fn=None,
@@ -60,7 +60,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
             # 24*24*24   28*28*24
             conv4_1 = slim.convolution2d(block_3_2, 144, [1, 1], stride=1, scope='conv4_1/expand')
             print(conv4_1.name, conv4_1.get_shape())
-            conv4_1 = slim.separable_convolution2d(conv4_1, num_outputs=None, stride=2, depth_multiplier=1,
+            conv4_1 = slim.separable_convolution2d(conv4_1, num_outputs=None, stride=2, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv4_1/dwise')
             print(conv4_1.name, conv4_1.get_shape())
             conv4_1 = slim.convolution2d(conv4_1, 32, [1, 1], stride=1, activation_fn=None,
@@ -69,7 +69,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
 
             conv4_2 = slim.convolution2d(conv4_1, 192, [1, 1], stride=1, scope='conv4_2/expand')
             print(conv4_2.name, conv4_2.get_shape())
-            conv4_2 = slim.separable_convolution2d(conv4_2, num_outputs=None, stride=1, depth_multiplier=1,
+            conv4_2 = slim.separable_convolution2d(conv4_2, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv4_2/dwise')
             print(conv4_2.name, conv4_2.get_shape())
             conv4_2 = slim.convolution2d(conv4_2, 32, [1, 1], stride=1, activation_fn=None,
@@ -80,7 +80,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
 
             conv4_3 = slim.convolution2d(block_4_2, 192, [1, 1], stride=1, scope='conv4_3/expand')
             print(conv4_3.name, conv4_3.get_shape())
-            conv4_3 = slim.separable_convolution2d(conv4_3, num_outputs=None, stride=1, depth_multiplier=1,
+            conv4_3 = slim.separable_convolution2d(conv4_3, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv4_3/dwise')
             print(conv4_3.name, conv4_3.get_shape())
             conv4_3 = slim.convolution2d(conv4_3, 32, [1, 1], stride=1, activation_fn=None,
@@ -93,7 +93,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
             features['feature4'] = block_4_3
             conv5_1 = slim.convolution2d(block_4_3, 192, [1, 1], stride=1, scope='conv5_1/expand')
             print(conv5_1.name, conv5_1.get_shape())
-            conv5_1 = slim.separable_convolution2d(conv5_1, num_outputs=None, stride=2, depth_multiplier=1,
+            conv5_1 = slim.separable_convolution2d(conv5_1, num_outputs=None, stride=2, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv5_1/dwise')
             print(conv5_1.name, conv5_1.get_shape())
             conv5_1 = slim.convolution2d(conv5_1, 64, [1, 1], stride=1,activation_fn=None,
@@ -102,7 +102,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
 
             conv5_2 = slim.convolution2d(conv5_1, 384, [1, 1], stride=1, scope='conv5_2/expand')
             print(conv5_2.name, conv5_2.get_shape())
-            conv5_2 = slim.separable_convolution2d(conv5_2, num_outputs=None, stride=1, depth_multiplier=1,
+            conv5_2 = slim.separable_convolution2d(conv5_2, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv5_2/dwise')
             print(conv5_2.name, conv5_2.get_shape())
             conv5_2 = slim.convolution2d(conv5_2, 64, [1, 1], stride=1, activation_fn=None,
@@ -113,7 +113,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
 
             conv5_3 = slim.convolution2d(block_5_2, 384, [1, 1], stride=1, scope='conv5_3/expand')
             print(conv5_3.name, conv5_3.get_shape())
-            conv5_3 = slim.separable_convolution2d(conv5_3, num_outputs=None, stride=1, depth_multiplier=1,
+            conv5_3 = slim.separable_convolution2d(conv5_3, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv5_3/dwise')
             print(conv5_3.name, conv5_3.get_shape())
             conv5_3 = slim.convolution2d(conv5_3, 64, [1, 1], stride=1,  activation_fn=None,
@@ -124,7 +124,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
 
             conv5_4 = slim.convolution2d(block_5_3, 384, [1, 1], stride=1, scope='conv5_4/expand')
             print(conv5_4.name, conv5_4.get_shape())
-            conv5_4 = slim.separable_convolution2d(conv5_4, num_outputs=None, stride=1, depth_multiplier=1,
+            conv5_4 = slim.separable_convolution2d(conv5_4, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv5_4/dwise')
             print(conv5_4.name, conv5_4.get_shape())
             conv5_4 = slim.convolution2d(conv5_4, 64, [1, 1], stride=1, activation_fn=None,
@@ -136,7 +136,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
             # 6*6*64    7*7*64
             conv6_1 = slim.convolution2d(block_5_4, 384, [1, 1], stride=1, scope='conv6_1/expand')
             print(conv6_1.name, conv6_1.get_shape())
-            conv6_1 = slim.separable_convolution2d(conv6_1, num_outputs=None, stride=1, depth_multiplier=1,
+            conv6_1 = slim.separable_convolution2d(conv6_1, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv6_1/dwise')
             print(conv6_1.name, conv6_1.get_shape())
             conv6_1 = slim.convolution2d(conv6_1, 96, [1, 1], stride=1, activation_fn=None,
@@ -145,7 +145,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
 
             conv6_2 = slim.convolution2d(conv6_1, 576, [1, 1], stride=1, scope='conv6_2/expand')
             print(conv6_2.name, conv6_2.get_shape())
-            conv6_2 = slim.separable_convolution2d(conv6_2, num_outputs=None, stride=1, depth_multiplier=1,
+            conv6_2 = slim.separable_convolution2d(conv6_2, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv6_2/dwise')
             print(conv6_2.name, conv6_2.get_shape())
             conv6_2 = slim.convolution2d(conv6_2, 96, [1, 1], stride=1, activation_fn=None,
@@ -156,7 +156,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
 
             conv6_3 = slim.convolution2d(block_6_2, 576, [1, 1], stride=1, scope='conv6_3/expand')
             print(conv6_3.name, conv6_3.get_shape())
-            conv6_3 = slim.separable_convolution2d(conv6_3, num_outputs=None, stride=1, depth_multiplier=1,
+            conv6_3 = slim.separable_convolution2d(conv6_3, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv6_3/dwise')
             print(conv6_3.name, conv6_3.get_shape())
             conv6_3 = slim.convolution2d(conv6_3, 96, [1, 1], stride=1, activation_fn=None,
@@ -169,7 +169,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
             # 6*6*96    7*7*96
             conv7_1 = slim.convolution2d(block_6_3, 576, [1, 1], stride=1, scope='conv7_1/expand')
             print(conv7_1.name, conv7_1.get_shape())
-            conv7_1 = slim.separable_convolution2d(conv7_1, num_outputs=None, stride=2, depth_multiplier=1,
+            conv7_1 = slim.separable_convolution2d(conv7_1, num_outputs=None, stride=2, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv7_1/dwise')
             print(conv7_1.name, conv7_1.get_shape())
             conv7_1 = slim.convolution2d(conv7_1, 160, [1, 1], stride=1, activation_fn=None,
@@ -178,7 +178,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
 
             conv7_2 = slim.convolution2d(conv7_1, 960, [1, 1], stride=1, scope='conv7_2/expand')
             print(conv7_2.name, conv7_2.get_shape())
-            conv7_2 = slim.separable_convolution2d(conv7_2, num_outputs=None, stride=1, depth_multiplier=1,
+            conv7_2 = slim.separable_convolution2d(conv7_2, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv7_2/dwise')
             print(conv7_2.name, conv7_2.get_shape())
             conv7_2 = slim.convolution2d(conv7_2, 160, [1, 1], stride=1, activation_fn=None,
@@ -190,7 +190,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
 
             conv7_3 = slim.convolution2d(block_7_2, 960, [1, 1], stride=1, scope='conv7_3/expand')
             print(conv7_3.name, conv7_3.get_shape())
-            conv7_3 = slim.separable_convolution2d(conv7_3, num_outputs=None, stride=1, depth_multiplier=1,
+            conv7_3 = slim.separable_convolution2d(conv7_3, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv7_3/dwise')
             print(conv7_3.name, conv7_3.get_shape())
             conv7_3 = slim.convolution2d(conv7_3, 160, [1, 1], stride=1, activation_fn=None,
@@ -201,7 +201,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
 
             conv7_4 = slim.convolution2d(block_7_3, 960, [1, 1], stride=1, scope='conv7_4/expand')
             print(conv7_4.name, conv7_4.get_shape())
-            conv7_4 = slim.separable_convolution2d(conv7_4, num_outputs=None, stride=1, depth_multiplier=1,
+            conv7_4 = slim.separable_convolution2d(conv7_4, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv7_4/dwise')
             print(conv7_4.name, conv7_4.get_shape())
             conv7_4 = slim.convolution2d(conv7_4, 320, [1, 1], stride=1, activation_fn=None,
@@ -210,7 +210,7 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
             features['feature6'] = conv7_4
     return features
 
-def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
+def pfld_inference(input, weight_decay, batch_norm_params, num_labels, depth_multi):
 
     coefficient = 1
     print("labels; ", num_labels)
@@ -232,14 +232,14 @@ def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
             print(conv1.name, conv1.get_shape())
 
             # 56*56*64
-            conv2 = slim.separable_convolution2d(conv1, num_outputs=None, stride=1, depth_multiplier=1,
+            conv2 = slim.separable_convolution2d(conv1, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv2/dwise')
             print(conv2.name, conv2.get_shape())
 
             # 56*56*64
             conv3_1 = slim.convolution2d(conv2, 128, [1, 1], stride=2, scope='conv3_1/expand')
             print(conv3_1.name,conv3_1.get_shape())
-            conv3_1 = slim.separable_convolution2d(conv3_1, num_outputs=None, stride=1, depth_multiplier=1,
+            conv3_1 = slim.separable_convolution2d(conv3_1, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv3_1/dwise')
             print(conv3_1.name, conv3_1.get_shape())
             conv3_1 = slim.convolution2d(conv3_1,64*coefficient,[1,1],stride=1,activation_fn=None,scope='conv3_1/linear')
@@ -247,7 +247,7 @@ def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
 
             conv3_2 = slim.convolution2d(conv3_1, 128, [1, 1], stride=1,scope='conv3_2/expand')
             print(conv3_2.name, conv3_2.get_shape())
-            conv3_2 = slim.separable_convolution2d(conv3_2, num_outputs=None, stride=1, depth_multiplier=1,
+            conv3_2 = slim.separable_convolution2d(conv3_2, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv3_2/dwise')
             print(conv3_2.name, conv3_2.get_shape())
             conv3_2 = slim.convolution2d(conv3_2, 64*coefficient, [1, 1], stride=1, activation_fn=None,scope='conv3_2/linear')
@@ -258,7 +258,7 @@ def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
 
             conv3_3 = slim.convolution2d(block3_2, 128, [1, 1], stride=1, scope='conv3_3/expand')
             print(conv3_3.name, conv3_3.get_shape())
-            conv3_3 = slim.separable_convolution2d(conv3_3, num_outputs=None, stride=1, depth_multiplier=1,
+            conv3_3 = slim.separable_convolution2d(conv3_3, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv3_3/dwise')
             print(conv3_3.name, conv3_3.get_shape())
             conv3_3 = slim.convolution2d(conv3_3, 64*coefficient, [1, 1], stride=1, activation_fn=None,scope='conv3_3linear')
@@ -269,7 +269,7 @@ def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
 
             conv3_4 = slim.convolution2d(block3_3, 128, [1, 1], stride=1, scope='conv3_4/expand')
             print(conv3_4.name, conv3_4.get_shape())
-            conv3_4 = slim.separable_convolution2d(conv3_4, num_outputs=None, stride=1, depth_multiplier=1,
+            conv3_4 = slim.separable_convolution2d(conv3_4, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv3_4/dwise')
             print(conv3_4.name, conv3_4.get_shape())
             conv3_4 = slim.convolution2d(conv3_4, 64*coefficient, [1, 1], stride=1, activation_fn=None,scope='conv3_4/linear')
@@ -280,7 +280,7 @@ def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
 
             conv3_5 = slim.convolution2d(block3_4, 128, [1, 1], stride=1,scope='conv3_5/expand')
             print(conv3_5.name, conv3_5.get_shape())
-            conv3_5 = slim.separable_convolution2d(conv3_5, num_outputs=None, stride=1, depth_multiplier=1,
+            conv3_5 = slim.separable_convolution2d(conv3_5, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv3_5/dwise')
             print(conv3_5.name, conv3_5.get_shape())
             conv3_5 = slim.convolution2d(conv3_5, 64*coefficient, [1, 1], stride=1, activation_fn=None,scope='conv3_5/linear')
@@ -294,7 +294,7 @@ def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
             #28*28*64
             conv4_1 = slim.convolution2d(block3_5, 128, [1, 1], stride=2,scope='conv4_1/expand')
             print(conv4_1.name, conv4_1.get_shape())
-            conv4_1 = slim.separable_convolution2d(conv4_1, num_outputs=None, stride=1, depth_multiplier=1,
+            conv4_1 = slim.separable_convolution2d(conv4_1, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv4_1/dwise')
             print(conv4_1.name, conv4_1.get_shape())
             conv4_1 = slim.convolution2d(conv4_1, 128*coefficient, [1, 1], stride=1, activation_fn=None,scope='conv4_1/linear')
@@ -303,7 +303,7 @@ def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
             #14*14*128
             conv5_1 = slim.convolution2d(conv4_1, 512, [1, 1], stride=1,scope='conv5_1/expand')
             print(conv5_1.name, conv5_1.get_shape())
-            conv5_1 = slim.separable_convolution2d(conv5_1, num_outputs=None, stride=1, depth_multiplier=1,
+            conv5_1 = slim.separable_convolution2d(conv5_1, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv5_1/dwise')
             print(conv5_1.name, conv5_1.get_shape())
             conv5_1 = slim.convolution2d(conv5_1, 128*coefficient, [1, 1], stride=1, activation_fn=None,scope='conv5_1/linear')
@@ -311,7 +311,7 @@ def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
 
             conv5_2 = slim.convolution2d(conv5_1, 512, [1, 1], stride=1,scope='conv5_2/expand')
             print(conv5_2.name, conv5_2.get_shape())
-            conv5_2 = slim.separable_convolution2d(conv5_2, num_outputs=None, stride=1, depth_multiplier=1,
+            conv5_2 = slim.separable_convolution2d(conv5_2, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv5_2/dwise')
             print(conv5_2.name, conv5_2.get_shape())
             conv5_2 = slim.convolution2d(conv5_2, 128*coefficient, [1, 1], stride=1, activation_fn=None,scope='conv5_2/linear')
@@ -322,7 +322,7 @@ def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
 
             conv5_3 = slim.convolution2d(block5_2, 512, [1, 1], stride=1, scope='conv5_3/expand')
             print(conv5_3.name, conv5_3.get_shape())
-            conv5_3 = slim.separable_convolution2d(conv5_3, num_outputs=None, stride=1, depth_multiplier=1,
+            conv5_3 = slim.separable_convolution2d(conv5_3, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv5_3/dwise')
             print(conv5_3.name, conv5_3.get_shape())
             conv5_3 = slim.convolution2d(conv5_3, 128*coefficient, [1, 1], stride=1, activation_fn=None, scope='conv5_3/linear')
@@ -333,7 +333,7 @@ def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
 
             conv5_4 = slim.convolution2d(block5_3, 512, [1, 1], stride=1, scope='conv5_4/expand')
             print(conv5_4.name, conv5_4.get_shape())
-            conv5_4 = slim.separable_convolution2d(conv5_4, num_outputs=None, stride=1, depth_multiplier=1,
+            conv5_4 = slim.separable_convolution2d(conv5_4, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv5_4/dwise')
             print(conv5_4.name, conv5_4.get_shape())
             conv5_4 = slim.convolution2d(conv5_4, 128*coefficient, [1, 1], stride=1, activation_fn=None, scope='conv5_4/linear')
@@ -344,7 +344,7 @@ def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
 
             conv5_5 = slim.convolution2d(block5_4, 512, [1, 1], stride=1, scope='conv5_5/expand')
             print(conv5_5.name, conv5_5.get_shape())
-            conv5_5 = slim.separable_convolution2d(conv5_5, num_outputs=None, stride=1, depth_multiplier=1,
+            conv5_5 = slim.separable_convolution2d(conv5_5, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv5_5/dwise')
             print(conv5_5.name, conv5_5.get_shape())
             conv5_5 = slim.convolution2d(conv5_5, 128*coefficient, [1, 1], stride=1, activation_fn=None,scope='conv5_5/linear')
@@ -355,7 +355,7 @@ def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
 
             conv5_6 = slim.convolution2d(block5_5, 512, [1, 1], stride=1, scope='conv5_6/expand')
             print(conv5_6.name, conv5_6.get_shape())
-            conv5_6 = slim.separable_convolution2d(conv5_6, num_outputs=None, stride=1, depth_multiplier=1,
+            conv5_6 = slim.separable_convolution2d(conv5_6, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv5_6/dwise')
             print(conv5_6.name, conv5_6.get_shape())
             conv5_6 = slim.convolution2d(conv5_6, 128*coefficient, [1, 1], stride=1, activation_fn=None, scope='conv5_6/linear')
@@ -367,7 +367,7 @@ def pfld_inference(input, weight_decay, batch_norm_params, num_labels):
             #14*14*128
             conv6_1 = slim.convolution2d(block5_6, 256, [1, 1], stride=1, scope='conv6_1/expand')
             print(conv6_1.name, conv6_1.get_shape())
-            conv6_1 = slim.separable_convolution2d(conv6_1, num_outputs=None, stride=1, depth_multiplier=1,
+            conv6_1 = slim.separable_convolution2d(conv6_1, num_outputs=None, stride=1, depth_multiplier=depth_multi,
                                                    kernel_size=[3, 3], scope='conv6_1/dwise')
             print(conv6_1.name, conv6_1.get_shape())
             conv6_1 = slim.convolution2d(conv6_1, 16*coefficient, [1, 1], stride=1, activation_fn=None,scope='conv6_1/linear')
@@ -413,7 +413,7 @@ def create_model(input, landmark, phase_train, args):
     landmark_dim = int(landmark.get_shape()[-1])
     print("labels; ", args.num_labels)
     time.sleep(3)
-    features ,landmarks_pre = pfld_inference(input, args.weight_decay, batch_norm_params, args.num_labels)
+    features ,landmarks_pre = pfld_inference(input, args.weight_decay, batch_norm_params, args.num_labels, args.depth_multi)
     # loss
     landmarks_loss = tf.reduce_sum(tf.square(landmarks_pre - landmark), axis=1)
     landmarks_loss = tf.reduce_mean(landmarks_loss)

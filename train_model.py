@@ -371,6 +371,7 @@ def parse_arguments(argv):
     parser.add_argument('--level', type=str, default='L5')
     parser.add_argument('--save_image_example', action='store_false')
     parser.add_argument('--debug', type=str, default='False')
+    parser.add_argument('--depth_multi', type=int, default=1)
     return parser.parse_args(argv)
 
 
