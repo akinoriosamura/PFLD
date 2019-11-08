@@ -86,8 +86,6 @@ def main(args):
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--file_list', type=str, default='data/train_data/list.txt')
-    parser.add_argument('--test_list', type=str, default='data/test_data/list.txt')
     parser.add_argument('--seed', type=int, default=666)
     parser.add_argument('--max_epoch', type=int, default=1000)
     parser.add_argument('--image_size', type=int, default=112)

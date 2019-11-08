@@ -6,7 +6,7 @@ lr=0.000000001
 
 # --pretrained_model=${pre_model} \
 # CUDA_VISIBLE_DEVICES='' \
-python -u train_model.py --model_dir=${save_model} \
+python -u save_model.py --model_dir=${save_model} \
                          --pretrained_model=${pre_model} \
                          --num_labels=${num_labels} \
                          --learning_rate=${lr} \
@@ -23,7 +23,7 @@ python -u train_model.py --model_dir=${save_model} \
 # 
 # # --pretrained_model=${pre_model} \
 # # CUDA_VISIBLE_DEVICES='' \
-# python -u train_model.py --model_dir=${save_model} \
+# python -u save_model.py --model_dir=${save_model} \
 #                                --pretrained_model=${pre_model} \
 #                                --num_labels=${num_labels} \
 #                                --learning_rate=${lr} \

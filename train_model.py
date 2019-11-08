@@ -29,7 +29,6 @@ def main(args):
     print("args: ", args)
     np.random.seed(args.seed)
     time.sleep(3)
-    save_model(args)
 
     with tf.Graph().as_default() as g:
         train_dataset, num_train_file = DateSet(args.file_list, args, debug)
@@ -177,7 +176,6 @@ def main(args):
                 start = time.time()
                 test_ME, test_FR, test_loss = test(sess, list_ops, args, g)
                 print("test time: {}" .format(time.time() - start))
-                create_saved_model(model_dir, g, sess)
 
                 summary, _, _, _, _, _ = sess.run(
                     [merged,
@@ -359,6 +357,8 @@ def save_image_example(sess, list_ops, args):
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
 
+    parser.add_argument('--file_list', type=str, default='data/train_data/list.txt')
+    parser.add_argument('--test_list', type=str, default='data/test_data/list.txt')
     parser.add_argument('--seed', type=int, default=666)
     parser.add_argument('--max_epoch', type=int, default=1000)
     parser.add_argument('--image_size', type=int, default=112)
