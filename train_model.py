@@ -59,7 +59,7 @@ def main(args):
         print('Model dir: {}'.format(model_dir))
 
         tf.set_random_seed(args.seed)
-        global_step = tf.Variable(0, shape=(), trainable=False)
+        global_step = tf.Variable(0, trainable=False)
 
         list_ops['global_step'] = global_step
         list_ops['train_dataset'] = train_dataset
@@ -116,11 +116,11 @@ def main(args):
         list_ops['train_op'] = train_op
         list_ops['lr_op'] = lr_op
 
-        test_mean_error = tf.Variable(0.0, shape=(), dtype=tf.float32, name='ME')
-        test_failure_rate = tf.Variable(0.0, shape=(), dtype=tf.float32, name='FR')
-        test_10_loss = tf.Variable(0.0, shape=(), dtype=tf.float32, name='TestLoss')
-        train_loss = tf.Variable(0.0, shape=(), dtype=tf.float32, name='TrainLoss')
-        train_loss_l2 = tf.Variable(0.0, shape=(), dtype=tf.float32, name='TrainLoss2')
+        test_mean_error = tf.Variable(tf.constant(0.0), dtype=tf.float32, name='ME')
+        test_failure_rate = tf.Variable(tf.constant(0.0), dtype=tf.float32, name='FR')
+        test_10_loss = tf.Variable(tf.constant(0.0), dtype=tf.float32, name='TestLoss')
+        train_loss = tf.Variable(tf.constant(0.0), dtype=tf.float32, name='TrainLoss')
+        train_loss_l2 = tf.Variable(tf.constant(0.0), dtype=tf.float32, name='TrainLoss2')
         tf.summary.scalar('test_mean_error', test_mean_error)
         tf.summary.scalar('test_failure_rate', test_failure_rate)
         tf.summary.scalar('test_10_loss', test_10_loss)
