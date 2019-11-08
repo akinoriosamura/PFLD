@@ -51,6 +51,23 @@ python camera.py
 CUDA_VISIBLE_DEVICES= python test_model.py
 ```
 
+## save model
+### to saved_model and pb file
+ - fix save.sh file  
+ - run `save.sh`
+
+### to tflite file
+ - from pb
+```
+tflite_convert --output_file=[tflite path] --graph_def_file=[pb file path] --input_arrays=image_batch --output_arrays=pfld_inference/fc/BiasAdd --allow_custom_ops --enable_select_tf_ops
+```
+
+ - from SavedModel
+```
+fix convert_tflite.py
+python convert_tflite.py
+```
+
 
 ## original README
 Table 1:  
