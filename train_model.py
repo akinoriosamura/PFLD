@@ -192,8 +192,7 @@ def train(sess, epoch_size, epoch, list_ops):
 
     image_batch, landmarks_batch, attribute_batch, euler_batch = list_ops['train_next_element']
 
-    # for i in range(epoch_size):
-    for i in range(1):
+    for i in range(epoch_size):
         # TODO : get the w_n and euler_angles_gt_batch
         images, landmarks, attributes, eulers = sess.run([image_batch, landmarks_batch, attribute_batch, euler_batch])
 
@@ -243,8 +242,7 @@ def test(sess, list_ops, args, g):
 
     epoch_size = math.ceil(list_ops['num_test_file'] * 1.0 / args.batch_size)
     print("test epoch size: ", epoch_size)
-    # for i in range(epoch_size):  # batch_num
-    for i in range(1):  # batch_num
+    for i in range(epoch_size):  # batch_num
         print("start epoch: ", i)
         images, landmarks, attributes, eulers = sess.run([image_batch, landmarks_batch, attribute_batch, euler_batch])
         feed_dict = {
