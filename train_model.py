@@ -21,80 +21,16 @@ import sys
 # import matplotlib
 # matplotlib.use('Agg')
 
-GRAPH = None
-
 
 log_dir = './tensorboard'
-
-def adjust_graph(graph_def):
-
-    # fix nodes
-    for node in graph_def.node:
-        if node.op == 'RefSwitch':
-            node.op = 'Switch'
-            for index in range(len(node.input)):
-                if 'moving_' in node.input[index]:
-                    node.input[index] = node.input[index] + '/read'
-        elif node.op == 'AssignSub':
-            node.op = 'Sub'
-            if 'use_locking' in node.attr:
-                del node.attr['use_locking']
-    """
-    for node in graph_def.node:
-        if node.op == 'RefSwitch':
-            node.op = 'Switch'
-            for index in range(len(node.input)):
-                if 'moving_' in node.input[index]:
-                    node.input[index] = node.input[index] + '/read'
-        elif node.op == 'AssignSub':
-            node.op = 'Sub'
-            if 'use_locking' in node.attr:
-                del node.attr['use_locking']
-        elif node.op == 'AssignAdd':
-            node.op = 'Add'
-            if 'use_locking' in node.attr:
-                del node.attr['use_locking']
-        elif node.op == 'Assign':
-            node.op = 'Identity'
-            if 'use_locking' in node.attr:
-                del node.attr['use_locking']
-            if 'validate_shape' in node.attr:
-                del node.attr['validate_shape']
-            if len(node.input) == 2:
-                # input0: ref: Should be from a Variable node. May be uninitialized.
-                # input1: value: The value to be assigned to the variable.
-                node.input[0] = node.input[1]
-                del node.input[1]
-    """
-
-    return graph_def
-
-def create_saved_model(model_dir, image_batch, phase_train_placeholder, landmarks_pre, sess):
-    print("start save saved_model")
-    save_model_dir = os.path.join(model_dir, "SavedModel")
-    # tf.saved_model.simple_save(sess, save_model_dir, inputs={"image_batch": image_batch, "phase_train": phase_train_placeholder}, outputs={"pfld_inference/fc/BiasAdd": landmarks_pre})
-    
-    builder = tf.saved_model.builder.SavedModelBuilder(save_model_dir)
-    signature = tf.saved_model.predict_signature_def(
-                    {"image_batch": image_batch, "phase_train": phase_train_placeholder}, outputs={"pfld_inference/fc/BiasAdd": landmarks_pre}
-                    )
-
-    # using custom tag instead of: tags=[tf.saved_model.tag_constants.SERVING]
-    builder.add_meta_graph_and_variables(sess=sess,
-                                        tags=[tf.saved_model.tag_constants.SERVING],
-                                        signature_def_map={
-                                            tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY: signature
-                                            }
-                                            )
-    builder.save()
-    print("finish save saved_model")
-
 
 def main(args):
     debug = (args.debug == 'True')
     print("args: ", args)
     np.random.seed(args.seed)
     time.sleep(3)
+    save_model(args)
+
     with tf.Graph().as_default() as g:
         train_dataset, num_train_file = DateSet(args.file_list, args, debug)
         test_dataset, num_test_file = DateSet(args.test_list, args, debug)
@@ -123,7 +59,7 @@ def main(args):
         print('Model dir: {}'.format(model_dir))
 
         tf.set_random_seed(args.seed)
-        global_step = tf.Variable(0, trainable=False)
+        global_step = tf.Variable(0, shape=(), trainable=False)
 
         list_ops['global_step'] = global_step
         list_ops['train_dataset'] = train_dataset
@@ -173,9 +109,6 @@ def main(args):
         loss_sum += L2_loss
     
         train_op, lr_op = train_model(loss_sum, global_step, num_train_file, args)
-        # update variables for layers.batch_notmalization
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        train_op = tf.group([train_op, update_ops])
 
         list_ops['landmarks'] = landmarks_pre
         list_ops['L2_loss'] = L2_loss
@@ -183,11 +116,11 @@ def main(args):
         list_ops['train_op'] = train_op
         list_ops['lr_op'] = lr_op
 
-        test_mean_error = tf.Variable(tf.constant(0.0), dtype=tf.float32, name='ME')
-        test_failure_rate = tf.Variable(tf.constant(0.0), dtype=tf.float32, name='FR')
-        test_10_loss = tf.Variable(tf.constant(0.0), dtype=tf.float32, name='TestLoss')
-        train_loss = tf.Variable(tf.constant(0.0), dtype=tf.float32, name='TrainLoss')
-        train_loss_l2 = tf.Variable(tf.constant(0.0), dtype=tf.float32, name='TrainLoss2')
+        test_mean_error = tf.Variable(0.0, shape=(), dtype=tf.float32, name='ME')
+        test_failure_rate = tf.Variable(0.0, shape=(), dtype=tf.float32, name='FR')
+        test_10_loss = tf.Variable(0.0, shape=(), dtype=tf.float32, name='TestLoss')
+        train_loss = tf.Variable(0.0, shape=(), dtype=tf.float32, name='TrainLoss')
+        train_loss_l2 = tf.Variable(0.0, shape=(), dtype=tf.float32, name='TrainLoss2')
         tf.summary.scalar('test_mean_error', test_mean_error)
         tf.summary.scalar('test_failure_rate', test_failure_rate)
         tf.summary.scalar('test_10_loss', test_10_loss)
@@ -203,15 +136,6 @@ def main(args):
         sess.run(tf.local_variables_initializer())
 
         with sess.as_default():
-
-            """
-                # adjust graph
-                print("######### adjust ############")
-                graph_def = adjust_graph(pre_g.as_graph_def())
-
-            with tf.Graph().as_default() as g:
-                tf.import_graph_def(graph_def, name='')
-            """
 
             epoch_start = 0
             if args.pretrained_model:
@@ -244,27 +168,6 @@ def main(args):
                 if not os.path.exists(metagraph_path):
                     saver.export_meta_graph(metagraph_path)
 
-                """
-                print("start save pre saved_model")
-                save_model_dir = os.path.join(model_dir, "SavedModelPre")
-                # tf.saved_model.simple_save(sess, save_model_dir, inputs={"image_batch": image_batch, "phase_train": phase_train_placeholder}, outputs={"pfld_inference/fc/BiasAdd": landmarks_pre})
-                
-                builder = tf.saved_model.builder.SavedModelBuilder(save_model_dir)
-                signature = tf.saved_model.predict_signature_def(
-                                {"image_batch": image_batch, "phase_train": phase_train_placeholder}, outputs={"pfld_inference/fc/BiasAdd": landmarks_pre}
-                                )
-
-                # using custom tag instead of: tags=[tf.saved_model.tag_constants.SERVING]
-                builder.add_meta_graph_and_variables(sess=sess,
-                                                    tags=[tf.saved_model.tag_constants.SERVING],
-                                                    signature_def_map={
-                                                        tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY: signature
-                                                        }
-                                                        )
-                builder.save()
-                print("finish save pre saved_model")
-                """
-
                 print("train start")
                 start = time.time()
                 train_L, train_L2 = train(sess, epoch_size, epoch, list_ops)
@@ -274,7 +177,8 @@ def main(args):
                 start = time.time()
                 test_ME, test_FR, test_loss = test(sess, list_ops, args, g)
                 print("test time: {}" .format(time.time() - start))
-                create_saved_model(model_dir, image_batch, phase_train_placeholder, landmarks_pre, sess)
+                create_saved_model(model_dir, g, sess)
+
                 summary, _, _, _, _, _ = sess.run(
                     [merged,
                      test_mean_error.assign(test_ME),
@@ -418,7 +322,6 @@ def test(sess, list_ops, args, g):
 
     return landmark_error_norm, failure_rate_norm, loss
 
-
 def heatmap2landmark(heatmap):
     landmark = []
     h, w, c = heatmap.shape
@@ -456,8 +359,6 @@ def save_image_example(sess, list_ops, args):
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--file_list', type=str, default='data/train_data/list.txt')
-    parser.add_argument('--test_list', type=str, default='data/test_data/list.txt')
     parser.add_argument('--seed', type=int, default=666)
     parser.add_argument('--max_epoch', type=int, default=1000)
     parser.add_argument('--image_size', type=int, default=112)

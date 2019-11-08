@@ -1,4 +1,5 @@
 WFLW*
+mnist/
 train_data
 imgs
 result
@@ -18,3 +19,4 @@ __pycache__/
 sample_test_result/
 models2/save_models/
 SavedModelPre/
+SavedModel/
