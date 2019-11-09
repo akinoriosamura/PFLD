@@ -9,86 +9,59 @@ from utils import LandmarkImage, LandmarkImage_98
 import time
 
 
-def conv2d(net, stride, channel, kernel, depth, _scope):
+def conv2d(net, stride, channel, kernel, depth, scope):
     num_channel = depth(channel)
-    net = slim.conv2d(net, num_channel, kernel, stride=stride, scope=_scope)
+    net = slim.conv2d(net, num_channel, [kernel, kernel], stride=stride, scope=scope)
 
     print(net.name, net.get_shape())
 
     return net
 
 
-def depthwiseconv3(net, stride, channel, kernel, depth, _scope):
-    num_channel = depth(channel)
-
-    net = slim.separable_convolution2d(
+def invertedbottleneck(net, stride, up_sample, channel, depth, scope):
+    prev_output = net
+    net = slim.conv2d(
         net,
-        num_outputs=None,
-        stride=stride,
-        depth_multiplier=1,
-        kernel_size=[kernel, kernel],
-        scope=_scope+'/dwise'
+        up_sample * net.get_shape().as_list()[-1],
+        [1, 1],
+        scope=scope + '/conv2d_1'
         )
     print(net.name, net.get_shape())
+    net = slim.separable_conv2d(net, None, [3, 3],
+                                depth_multiplier=1,
+                                stride=stride,
+                                scope=scope + '/separable2d')
+    print(net.name, net.get_shape())
+    num_channel = depth(channel)
     net = slim.conv2d(
         net,
         num_channel,
-        kernel,
-        stride=stride,
+        [1, 1],
         activation_fn=None,
-        scope=_scope+'/conv2d'
+        scope=scope + '/conv2d_2'
         )
     print(net.name, net.get_shape())
 
-    return net
-
-
-def invertedbottleneck(net, stride, up_sample, channel, depth, repeat, _scope):
-    for id in range(repeat):
-        scope = _scope + "_" + str(id)
-        prev_output = net
-        net = slim.conv2d(
-            net,
-            up_sample * net.get_shape().as_list()[-1],
-            [1, 1],
-            scope=scope + '/conv2d_1'
-            )
-        print(net.name, net.get_shape())
-        net = slim.separable_conv2d(net, None, [3, 3],
-                                    depth_multiplier=1,
-                                    stride=stride,
-                                    scope=scope + '/separable2d')
-        print(net.name, net.get_shape())
-        num_channel = depth(channel)
-        net = slim.conv2d(
-            net,
-            num_channel,
-            [1, 1],
-            activation_fn=None,
-            scope=scope + '/conv2d_2'
-            )
-        print(net.name, net.get_shape())
-
-        if stride == 1:
-            if prev_output.get_shape().as_list(
-            )[-1] != net.get_shape().as_list()[-1]:
-                # Assumption based on previous ResNet papers: If the number of filters doesn't match,
-                # there should be a conv 1x1 operation.
-                # reference(pytorch) :
-                # https://github.com/MG2033/MobileNet-V2/blob/master/layers.py#L29
-                prev_output = slim.conv2d(
-                    prev_output,
-                    num_channel,
-                    [1, 1],
-                    activation_fn=None,
-                    biases_initializer=None,
-                    scope=scope + '/conv2d_3'
-                    )
-                print(net.name, net.get_shape())
-
-            # as described in Figure 4.
-            net = tf.add(prev_output, net, name=scope + '/add')
+    if stride == 1:
+        if prev_output.get_shape().as_list(
+        )[-1] != net.get_shape().as_list()[-1]:
+            # Assumption based on previous ResNet papers: If the number of filters doesn't match,
+            # there should be a conv 1x1 operation.
+            # reference(pytorch) :
+            # https://github.com/MG2033/MobileNet-V2/blob/master/layers.py#L29
+            prev_output = slim.conv2d(
+                prev_output,
+                num_channel,
+                [1, 1],
+                activation_fn=None,
+                biases_initializer=None,
+                scope=scope + '/conv2d_3'
+                )
             print(net.name, net.get_shape())
+
+        # as described in Figure 4.
+        net = tf.add(prev_output, net, name=scope + '/add')
+        print(net.name, net.get_shape())
     return net
 
 
@@ -116,25 +89,35 @@ def pfld_backbone(input, weight_decay, batch_norm_params, num_labels, depth_mult
             ):
             print('PFLD input shape({}): {}'.format(input.name, input.get_shape()))
             # 112*112*3 / conv3*3 / c:64,n:1,s:2
-            conv1 = conv2d(input, stride=2, channel=64*coefficient, kernel=3, depth=depth, _scope='conv1')
+            conv1 = conv2d(input, stride=2, channel=64*coefficient, kernel=3, depth=depth, scope='conv1')
             # 56*56*64 / depthwiseconv3*3 / c:64,n:1,s:1
             num_channel = depth(64)
             conv2 = slim.separable_conv2d(conv1, num_channel, [3, 3], depth_multiplier=1, stride=1, scope='conv2/dwise')
             print(conv2.name, conv2.get_shape())
             # 56*56*64 / InverseBottleneck / up_s:2,c:64,n:5,s:2
-            conv3 = invertedbottleneck(conv2, stride=2, up_sample=2, channel=64, depth=depth, repeat=5, _scope='conv3/inbottleneck')
-            features['auxiliary_input'] = conv3
+            conv3_1 = invertedbottleneck(conv2, stride=2, up_sample=2, channel=64, depth=depth, scope='conv3_1/inbottleneck')
+            conv3_2 = invertedbottleneck(conv3_1, stride=1, up_sample=2, channel=64, depth=depth, scope='conv3_2/inbottleneck')
+            conv3_3 = invertedbottleneck(conv3_2, stride=1, up_sample=2, channel=64, depth=depth, scope='conv3_3/inbottleneck')
+            conv3_4 = invertedbottleneck(conv3_3, stride=1, up_sample=2, channel=64, depth=depth, scope='conv3_4/inbottleneck')
+            conv3_5 = invertedbottleneck(conv3_4, stride=1, up_sample=2, channel=64, depth=depth, scope='conv3_5/inbottleneck')
+            features['auxiliary_input'] = conv3_5
             # 28*28*64 / InverseBottleneck / up_s:2,c:128,n:1,s:2
-            conv4 = invertedbottleneck(conv3, stride=2, up_sample=2, channel=128, depth=depth, repeat=1, _scope='conv4/inbottleneck')
+            conv4 = invertedbottleneck(conv3_5, stride=2, up_sample=2, channel=128, depth=depth, scope='conv4/inbottleneck')
             # 14*14*128 / InverseBottleneck / up_s:4,c:128,n:6,s:1
-            conv5 = invertedbottleneck(conv4, stride=1, up_sample=4, channel=128, depth=depth, repeat=6, _scope='conv5/inbottleneck')
+            conv5_1 = invertedbottleneck(conv4, stride=1, up_sample=4, channel=128, depth=depth, scope='conv5_1/inbottleneck')
+            conv5_2 = invertedbottleneck(conv5_1, stride=1, up_sample=4, channel=128, depth=depth, scope='conv5_2/inbottleneck')
+            conv5_3 = invertedbottleneck(conv5_2, stride=1, up_sample=4, channel=128, depth=depth, scope='conv5_3/inbottleneck')
+            conv5_4 = invertedbottleneck(conv5_3, stride=1, up_sample=4, channel=128, depth=depth, scope='conv5_4/inbottleneck')
+            conv5_5 = invertedbottleneck(conv5_4, stride=1, up_sample=4, channel=128, depth=depth, scope='conv5_5/inbottleneck')
+            conv5_6 = invertedbottleneck(conv5_5, stride=1, up_sample=4, channel=128, depth=depth, scope='conv5_6/inbottleneck')
             # 14*14*128 / InverseBottleneck / up_s:2,c:16,n:1,s:1
-            conv6 = invertedbottleneck(conv5, stride=1, up_sample=2, channel=16, depth=depth, repeat=1, _scope='conv6/inbottleneck')
+            conv6 = invertedbottleneck(conv5_6, stride=1, up_sample=2, channel=16, depth=depth, scope='conv6/inbottleneck')
             # 14*14*16 / conv3*3 / c:32,n:1,s:2
-            conv7 = conv2d(conv6, stride=2, channel=32*coefficient, kernel=3, depth=depth, _scope='conv7')
+            conv7 = conv2d(conv6, stride=2, channel=32*coefficient, kernel=3, depth=depth, scope='conv7')
             # 7*7*32 / conv7*7 / c:128,n:1,s:1
-            conv8 = conv2d(conv7, stride=1, channel=128*coefficient, kernel=7, depth=depth, _scope='conv8')
-            
+            num_channel = depth(128*coefficient)
+            conv8 = slim.conv2d(conv7, num_channel, [7, 7], stride=1, padding='VALID', scope='conv8')
+            print(conv8.name, conv8.get_shape())
             avg_pool1 = slim.avg_pool2d(conv6, [conv6.get_shape()[1], conv6.get_shape()[2]], stride=1)
             print(avg_pool1.name, avg_pool1.get_shape())
             avg_pool2 = slim.avg_pool2d(conv7, [conv7.get_shape()[1], conv7.get_shape()[2]], stride=1)
