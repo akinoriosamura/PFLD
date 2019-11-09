@@ -19,11 +19,12 @@ import sys
 
 
 def create_save_model(model_dir, graph, sess):
-    # save graphdef file to pb	
-    print("Save frozen graph")	
-    graphdef_n = "original_98_frozen.pb"	
-    graph_def = graph_util.convert_variables_to_constants(sess, graph.as_graph_def(), ["pfld_inference/fc/BiasAdd"])	
-    tf.train.write_graph(graph_def,model_dir,graphdef_n,as_text=False)
+    # save graphdef file to pb
+    print("Save frozen graph")
+    graphdef_n = "original_98_frozen.pb"
+    graph_def = graph_util.convert_variables_to_constants(
+        sess, graph.as_graph_def(), ["pfld_inference/fc/BiasAdd"])
+    tf.train.write_graph(graph_def, model_dir, graphdef_n, as_text=False)
 
     # save SavedModel
     print("get tensor")
@@ -34,16 +35,14 @@ def create_save_model(model_dir, graph, sess):
     # tf.saved_model.simple_save(sess, save_model_dir, inputs={"image_batch": image_batch}, outputs={"pfld_inference/fc/BiasAdd": landmarks_pre})
     builder = tf.saved_model.builder.SavedModelBuilder(save_model_dir)
     signature = tf.saved_model.predict_signature_def(
-                    {"image_batch": image_batch}, outputs={"pfld_inference/fc/BiasAdd": landmarks_pre}
-                    )
+        {"image_batch": image_batch}, outputs={"pfld_inference/fc/BiasAdd": landmarks_pre}
+    )
 
     # using custom tag instead of: tags=[tf.saved_model.tag_constants.SERVING]
-    builder.add_meta_graph_and_variables(sess=sess,
-                                        tags=[tf.saved_model.tag_constants.SERVING],
-                                        signature_def_map={
-                                            tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY: signature
-                                            }
-                                            )
+    builder.add_meta_graph_and_variables(
+        sess=sess, tags=[
+            tf.saved_model.tag_constants.SERVING], signature_def_map={
+            tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY: signature})
     builder.save()
     print("finish save saved_model")
 
@@ -57,16 +56,23 @@ def main(args):
     with tf.Graph().as_default() as inf_g:
         image_batch = tf.placeholder(tf.float32, shape=(None, args.image_size, args.image_size, 3),
                                      name='image_batch')
-        landmark_batch = tf.placeholder(tf.float32, shape=(None, args.num_labels*2), name='landmark_batch')
+        landmark_batch = tf.placeholder(tf.float32, shape=(
+            None, args.num_labels * 2), name='landmark_batch')
 
         phase_train_placeholder = tf.constant(False, name='phase_train')
-        landmarks_pre, _, _ = create_model(image_batch, landmark_batch, phase_train_placeholder, args)
-        
+        landmarks_pre, _, _ = create_model(
+            image_batch, landmark_batch, phase_train_placeholder, args)
+
         save_params = tf.trainable_variables()
         saver = tf.train.Saver(save_params, max_to_keep=None)
 
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0)
-        inf_sess = tf.Session(graph=inf_g, config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=False, log_device_placement=False))
+        inf_sess = tf.Session(
+            graph=inf_g,
+            config=tf.ConfigProto(
+                gpu_options=gpu_options,
+                allow_soft_placement=False,
+                log_device_placement=False))
         inf_sess.run(tf.global_variables_initializer())
         inf_sess.run(tf.local_variables_initializer())
 
@@ -76,7 +82,8 @@ def main(args):
             print('ckpt: {}'.format(ckpt))
             model_path = ckpt.model_checkpoint_path
             assert (ckpt and model_path)
-            epoch_start = int(model_path[model_path.find('model.ckpt-') + 11:]) + 1
+            epoch_start = int(
+                model_path[model_path.find('model.ckpt-') + 11:]) + 1
             print('Checkpoint file: {}'.format(model_path))
             saver.restore(inf_sess, model_path)
 

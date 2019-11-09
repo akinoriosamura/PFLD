@@ -13,6 +13,7 @@ import time
 
 from generate_data import gen_data
 
+
 def main():
     num_labels = 98
     saved_target = "./models2/save_models/98/1107/"
@@ -48,9 +49,11 @@ def main():
             landmark_L5 = graph.get_tensor_by_name('landmark_L5:0')
             landmark_total = [landmark_L1, landmark_L2, landmark_L3, landmark_L4, landmark_L5]
             """
-            landmark_total = graph.get_tensor_by_name('pfld_inference/fc/BiasAdd:0')
+            landmark_total = graph.get_tensor_by_name(
+                'pfld_inference/fc/BiasAdd:0')
 
-            file_list, train_landmarks, train_attributes, euler_angles = gen_data(image_files, num_labels)
+            file_list, train_landmarks, train_attributes, euler_angles = gen_data(
+                image_files, num_labels)
             print(file_list)
             for file in file_list:
                 filename = os.path.split(file)[-1]
@@ -58,7 +61,7 @@ def main():
                 # image = cv2.resize(image, (image_size, image_size))
                 input = cv2.cvtColor(image.copy(), cv2.COLOR_BGR2RGB)
                 input = cv2.resize(input, (image_size, image_size))
-                input = input.astype(np.float32)/256.0
+                input = input.astype(np.float32) / 256.0
                 input = np.expand_dims(input, 0)
                 # print(input.shape)
 
@@ -79,6 +82,7 @@ def main():
                     cv2.circle(image, (x, y), 1, (0, 0, 255))
                 print(os.path.join(out_dir, filename))
                 cv2.imwrite(os.path.join(out_dir, filename), image)
+
 
 if __name__ == '__main__':
     main()

@@ -24,6 +24,7 @@ import sys
 
 log_dir = './tensorboard'
 
+
 def main(args):
     debug = (args.debug == 'True')
     print("args: ", args)
@@ -179,13 +180,15 @@ def main(args):
                     print("test time: {}" .format(time.time() - start))
 
                     summary, _, _, _, _, _ = sess.run(
-                        [merged,
-                        test_mean_error.assign(test_ME),
-                        test_failure_rate.assign(test_FR),
-                        test_10_loss.assign(test_loss),
-                        train_loss.assign(train_L),
-                        train_loss_l2.assign(train_L2)
-                        ])
+                        [
+                            merged,
+                            test_mean_error.assign(test_ME),
+                            test_failure_rate.assign(test_FR),
+                            test_10_loss.assign(test_loss),
+                            train_loss.assign(train_L),
+                            train_loss_l2.assign(train_L2)
+                        ]
+                    )
                     train_write.add_summary(summary, epoch)
                 
 
@@ -279,7 +282,11 @@ def test(sess, list_ops, args, g):
             # print("eye; ", right_eye_edge)
             # print("labels: ", args.num_labels)
             time.sleep(3)
-            interocular_distance = np.sqrt(np.sum(pow((landmarks[k][left_eye_edge*2:left_eye_edge*2+2] - landmarks[k][right_eye_edge*2:right_eye_edge*2+2]), 2)))
+            interocular_distance = np.sqrt(
+                np.sum(
+                    pow((landmarks[k][left_eye_edge*2:left_eye_edge*2+2] - landmarks[k][right_eye_edge*2:right_eye_edge*2+2]), 2)
+                    )
+                )
             error_norm = error_all_points / (interocular_distance * args.num_labels)
             landmark_error += error_norm
             if error_norm >= 0.1:
@@ -318,6 +325,7 @@ def test(sess, list_ops, args, g):
     print(error_str + '\n' + failure_rate_str + '\n')
 
     return landmark_error_norm, failure_rate_norm, loss
+
 
 def heatmap2landmark(heatmap):
     landmark = []
