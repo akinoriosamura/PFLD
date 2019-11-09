@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from utils import train_model
-from model2 import create_model
+from pfld import create_model
 from generate_data import DateSet
 import time
 import math
@@ -372,7 +372,7 @@ def parse_arguments(argv):
     parser.add_argument('--level', type=str, default='L5')
     parser.add_argument('--save_image_example', action='store_false')
     parser.add_argument('--debug', type=str, default='False')
-    parser.add_argument('--depth_multi', type=int, default=1)
+    parser.add_argument('--depth_multi', type=float, default=1)
     return parser.parse_args(argv)
 
 

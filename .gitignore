@@ -20,3 +20,5 @@ sample_test_result/
 models2/save_models/
 SavedModelPre/
 SavedModel/
+.mypy_cache/
+*.tflite

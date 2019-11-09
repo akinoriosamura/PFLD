@@ -9,19 +9,20 @@ import tensorflow as tf
 import numpy as np
 import cv2
 import shutil
+import time
 
 from generate_data import gen_data
 
 def main():
     num_labels = 98
-    saved_target = "./models2/models/WFLW_98/1004/"
+    saved_target = "./models2/save_models/98/1107/"
     meta_file = saved_target + 'model.meta'
-    ckpt_file = saved_target + 'model.ckpt-195'
+    ckpt_file = saved_target + 'model.ckpt-5'
     # test_list = './data/300w_image_list.txt'
 
     image_size = 112
 
-    image_files = 'data/test_WFLW_68_data/list_sample.txt'
+    image_files = 'data/test_WFLW_98_data/list.txt'
     out_dir = 'sample_test_result'
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
@@ -66,7 +67,6 @@ def main():
                     phase_train_placeholder: False
                 }
 
-                import time
                 st = time.time()
                 pre_landmarks = sess.run(landmark_total, feed_dict=feed_dict)
                 # print(pre_landmarks)

@@ -10,5 +10,7 @@ services:
       - ./:/usr/src/app
       - /data:/data
     runtime: nvidia
+    ports:
+      - 9999:9999
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
