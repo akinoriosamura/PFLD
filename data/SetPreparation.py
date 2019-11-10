@@ -224,7 +224,7 @@ class ImageDate():
                 imgT = cv2.resize(imgT, (self.image_size, self.image_size))
 
                 if mirror is not None and np.random.choice((True, False)):
-                    print("There is Mirror file")
+                    # print("There is Mirror file")
                     landmark[:, 0] = 1 - landmark[:, 0]
                     landmark = landmark[mirror_idx]
                     imgT = cv2.flip(imgT, 1)

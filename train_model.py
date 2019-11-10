@@ -167,11 +167,21 @@ def main(args):
                 train_L, train_L2 = train(sess, epoch_size, epoch, list_ops)
                 print("train time: {}" .format(time.time() - start))
 
+                summary, _, _ = sess.run(
+                    [
+                        merged,
+                        train_loss.assign(train_L),
+                        train_loss_l2.assign(train_L2)
+                    ]
+                )
+                train_write.add_summary(summary, epoch)
+
                 checkpoint_path = os.path.join(model_dir, 'model.ckpt')
                 metagraph_path = os.path.join(model_dir, 'model.meta')
                 saver.save(sess, checkpoint_path, global_step=epoch, write_meta_graph=False)
                 if not os.path.exists(metagraph_path):
                     saver.export_meta_graph(metagraph_path)
+                print("save checkpoint: {}".format(checkpoint_path))
 
                 if epoch % 5 == 0 and epoch != 0:
                     print("test start")
@@ -179,14 +189,12 @@ def main(args):
                     test_ME, test_FR, test_loss = test(sess, list_ops, args, g)
                     print("test time: {}" .format(time.time() - start))
 
-                    summary, _, _, _, _, _ = sess.run(
+                    summary, _, _, _ = sess.run(
                         [
                             merged,
                             test_mean_error.assign(test_ME),
                             test_failure_rate.assign(test_FR),
-                            test_10_loss.assign(test_loss),
-                            train_loss.assign(train_L),
-                            train_loss_l2.assign(train_L2)
+                            test_10_loss.assign(test_loss)
                         ]
                     )
                     train_write.add_summary(summary, epoch)
