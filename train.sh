@@ -6,7 +6,7 @@ file_list=data/train_original_data/list.txt
 test_list=data/test_original_data/list.txt
 pre_model=./models2/trained_models/WFLW_98/1004
 logs=./models2/log_1107.txt
-lr=0.000000001
+lr=0.0001
 
 # --pretrained_model=${pre_model} \
 # CUDA_VISIBLE_DEVICES='' \
