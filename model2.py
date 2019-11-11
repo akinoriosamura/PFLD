@@ -9,7 +9,7 @@ from utils import LandmarkImage,LandmarkImage_98
 import time
 
 
-def mobilenet_v2(input, weight_decay, batch_norm_params, depth_multi):
+def mobilenet_v2(input, weight_decay, batch_norm_params):
     features = {}
     with tf.variable_scope('Mobilenet'):
         with slim.arg_scope([slim.convolution2d, slim.separable_conv2d], \
