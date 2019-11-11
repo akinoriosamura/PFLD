@@ -30,7 +30,7 @@ def main(args):
     np.random.seed(args.seed)
     time.sleep(3)
 
-    with tf.Graph().as_default() as g:
+    with tf.Graph().as_default():
         train_dataset, num_train_file = DateSet(args.file_list, args, debug)
         test_dataset, num_test_file = DateSet(args.test_list, args, debug)
         list_ops = {}
@@ -72,7 +72,7 @@ def main(args):
         # input node
         image_batch = tf.placeholder(tf.float32, shape=(None, args.image_size, args.image_size, 3),
                                      name='image_batch')
-        print("args: ", args.num_labels*2)
+        print("landmark labels num: ", args.num_labels*2)
         time.sleep(3)
         landmark_batch = tf.placeholder(tf.float32, shape=(None, args.num_labels*2), name='landmark_batch')
         attribute_batch = tf.placeholder(tf.int32, shape=(None, 6), name='attribute_batch')
@@ -175,7 +175,7 @@ def main(args):
                 if epoch % 5 == 0 and epoch != 0:
                     print("test start")
                     start = time.time()
-                    test_ME, test_FR, test_loss = test(sess, list_ops, args, g)
+                    test_ME, test_FR, test_loss = test(sess, list_ops, args)
                     print("test time: {}" .format(time.time() - start))
 
                     summary, _, _, _, _, _ = sess.run(
@@ -230,7 +230,7 @@ def train(sess, epoch_size, epoch, list_ops):
     return loss, L2_loss
 
 
-def test(sess, list_ops, args, g):
+def test(sess, list_ops, args):
     image_batch, landmarks_batch, attribute_batch, euler_batch = list_ops['test_next_element']
 
     sample_path = os.path.join(args.model_dir, 'HeatMaps')
@@ -278,12 +278,12 @@ def test(sess, list_ops, args, g):
             # print("eye: ", left_eye_edge)
             # print("eye; ", right_eye_edge)
             # print("labels: ", args.num_labels)
-            time.sleep(3)
             interocular_distance = np.sqrt(np.sum(pow((landmarks[k][left_eye_edge*2:left_eye_edge*2+2] - landmarks[k][right_eye_edge*2:right_eye_edge*2+2]), 2)))
             error_norm = error_all_points / (interocular_distance * args.num_labels)
             landmark_error += error_norm
             if error_norm >= 0.1:
                 landmark_01_num += 1
+
 
         # if i == 0:
         #     image_save_path = os.path.join(sample_path, 'img')

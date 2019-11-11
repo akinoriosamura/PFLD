@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 num_labels=98
 depth_multi=1 # default = 1, like model complicated
-save_model=./models2/save_models/98/1107
-file_list=data/train_WFLW_98_data/list.txt
-test_list=data/test_WFLW_98_data/list.txt
+save_model=./models2/save_models/98/1111
+file_list=data/train_original_data/list.txt
+test_list=data/test_original_data/list.txt
 pre_model=./models2/trained_models/WFLW_98/1004
 logs=./models2/log_1107.txt
 lr=0.000000001
