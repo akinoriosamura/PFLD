@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 num_labels=98
 depth_multi=1 # default = 1, like model complicated
-save_model=./models2/save_models/98/1109
+save_model=./models2/save_models/98/1111
 file_list=data/train_WFLW_98_data/list.txt
 test_list=data/test_WFLW_98_data/list.txt
 pre_model=./models2/trained_models/WFLW_98/1109
-lr=0.000000001
+lr=0.0001
 
 # --pretrained_model=${pre_model} \
 # CUDA_VISIBLE_DEVICES='' \
