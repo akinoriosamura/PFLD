@@ -6,8 +6,10 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from utils import LandmarkImage,LandmarkImage_98
 
+import time
 
-def mobilenet_v2(input, weight_decay, batch_norm_params):
+
+def mobilenet_v2(input, weight_decay, batch_norm_params, depth_multi):
     features = {}
     with tf.variable_scope('Mobilenet'):
         with slim.arg_scope([slim.convolution2d, slim.separable_conv2d], \
@@ -208,11 +210,14 @@ def mobilenet_v2(input, weight_decay, batch_norm_params):
             features['feature6'] = conv7_4
     return features
 
-def pfld_inference(input, weight_decay, batch_norm_params):
+def pfld_inference(input, weight_decay, batch_norm_params, num_labels, depth_multi):
 
     coefficient = 1
+    print("labels; ", num_labels)
+    time.sleep(3)
     with tf.variable_scope('pfld_inference'):
         features = {}
+        # normalizer_fn=slim.batch_norm,
         with slim.arg_scope([slim.convolution2d, slim.separable_conv2d], \
                             activation_fn=tf.nn.relu6,\
                             weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
@@ -381,13 +386,14 @@ def pfld_inference(input, weight_decay, batch_norm_params):
 
             avg_pool2 = slim.avg_pool2d(conv7,[conv7.get_shape()[1],conv7.get_shape()[2]],stride=1)
             print(avg_pool2.name,avg_pool2.get_shape())
+            # pfld_inference/AvgPool2D_1/AvgPool:0
 
             s1 = slim.flatten(avg_pool1)
             s2 = slim.flatten(avg_pool2)
             #1*1*128
             s3 = slim.flatten(conv8)
             multi_scale = tf.concat([s1,s2,s3],1)
-            landmarks = slim.fully_connected(multi_scale,num_outputs=196,activation_fn=None,scope='fc')
+            landmarks = slim.fully_connected(multi_scale,num_outputs=num_labels*2,activation_fn=None,scope='fc')
             return features ,landmarks
 
 def create_model(input, landmark, phase_train, args):
@@ -400,7 +406,9 @@ def create_model(input, landmark, phase_train, args):
     }
 
     landmark_dim = int(landmark.get_shape()[-1])
-    features ,landmarks_pre = pfld_inference(input, args.weight_decay, batch_norm_params)
+    print("labels; ", args.num_labels)
+    time.sleep(3)
+    features ,landmarks_pre = pfld_inference(input, args.weight_decay, batch_norm_params, args.num_labels, args.depth_multi)
     # loss
     landmarks_loss = tf.reduce_sum(tf.square(landmarks_pre - landmark), axis=1)
     landmarks_loss = tf.reduce_mean(landmarks_loss)
@@ -433,6 +441,9 @@ def create_model(input, landmark, phase_train, args):
         print(fc1.name,fc1.get_shape())
         euler_angles_pre = slim.fully_connected(fc1,num_outputs=3, activation_fn=None, scope='pfld_fc2')
         print(euler_angles_pre.name,euler_angles_pre.get_shape())
+        # pfld_fc2/BatchNorm/Reshape_1:0
+        print("==========finish define graph===========")
 
     # return landmarks_loss, landmarks, heatmap_loss, HeatMaps
     return landmarks_pre,landmarks_loss, euler_angles_pre
+
