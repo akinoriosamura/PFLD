@@ -7,8 +7,9 @@ import shutil
 import sys
 import configparser
 
-debug = False
-# debug = True
+DEBUG = False
+# DEBUG = True
+DEBUG_DIR = 'sample_result'
 
 
 def rotate(angle, center, landmark):
@@ -70,9 +71,6 @@ class ImageDate():
             self.path = os.path.join(imgDir, line[146])
             self.img = None
             self.num_labels = num_labels
-            debug = False
-            if debug:
-                self.show_labels()
         elif num_labels == 98:
             assert(len(line) == 207)
             self.tracked_points = [33, 38, 50, 46, 60, 64, 68, 72, 55, 59, 76, 82, 85, 16]
@@ -90,9 +88,6 @@ class ImageDate():
             self.path = os.path.join(imgDir, line[206])
             self.img = None
             self.num_labels = num_labels
-            debug = False
-            if debug:
-                self.show_labels()
         else:
             print("len landmark is not invalid")
             exit()
@@ -117,16 +112,17 @@ class ImageDate():
 
         return line
 
-    def show_labels(self):
-        img = cv2.imread(self.path)
+    def show_labels(self, img, land, img_name):
         # WFLW bbox: x_min_rect y_min_rect x_max_rect y_max_rect
-        cv2.rectangle(img, (self.box[0], self.box[1]), (self.box[2], self.box[3]), (255, 0, 0), 1, 1)
-        for x, y in self.landmark:
+        import pdb;pdb.set_trace()
+        for x, y in land:
             cv2.circle(img, (x, y), 3, (0, 0, 255))
 
-        cv2.imshow("", img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        # cv2.imshow("", img)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
+        print("save: ", os.path.join(DEBUG_DIR, img_name))
+        cv2.imwrite(os.path.join(DEBUG_DIR, img_name), img)
 
     def load_data(self, is_train, repeat, mirror=None):
         if (mirror is not None):
@@ -142,7 +138,7 @@ class ImageDate():
 
         center = (xy + wh / 2).astype(np.int32)
         img = cv2.imread(self.path)
-        # debug
+        # DEBUG
 
         # 顔枠のサイズ
         boxsize = int(np.max(wh) * 1.2)
@@ -224,9 +220,15 @@ class ImageDate():
                 imgT = cv2.resize(imgT, (self.image_size, self.image_size))
 
                 if mirror is not None and np.random.choice((True, False)):
+                    if DEBUG == True:
+                        print("There is Mirror file")
+                        self.show_labels(imgT, landmark, os.path.basename(self.path)+"origin.jpg")
                     landmark[:, 0] = 1 - landmark[:, 0]
                     landmark = landmark[mirror_idx]
                     imgT = cv2.flip(imgT, 1)
+                    if DEBUG == True:
+                        print("There is Mirror file")
+                        self.show_labels(imgT, landmark, os.path.basename(self.path)+"mirror.jpg")
 
                 self.imgs.append(imgT)
                 self.landmarks.append(landmark)
@@ -268,7 +270,7 @@ def get_dataset_list(imgDir, outDir, landmarkDir, is_train, num_labels):
         if not os.path.exists(save_img):
             os.mkdir(save_img)
 
-        if debug:
+        if DEBUG:
             lines = lines[:100]
         for i, line in enumerate(lines):
             Img = ImageDate(line, imgDir, num_labels)
@@ -318,6 +320,10 @@ if __name__ == '__main__':
         exit()
 
     root_dir = os.path.dirname(os.path.realpath(__file__))
+
+    if DEBUG == True:
+        if not os.path.exists(DEBUG_DIR):
+            os.mkdir(DEBUG_DIR)
 
     config = configparser.ConfigParser()
     config.read('preparate_config.ini')
