@@ -12,10 +12,13 @@ def extract_annotations(labels_xml):
     # save labels in lines
     annotations = []
     error_files = []
+    correct_img_num = 0
+    error_num = 0
     for img_xml in labels_xml[0].iter('image'):
         try:
             annotation = []
-            img_file = img_xml.attrib["file"]
+            # IMG_0555 2-1.jpg注意
+            img_file = img_xml.attrib["file"].replace(" ", "_")
             # {'top': '49', 'left': '49', 'width': '193', 'height': '194'}
             box = img_xml[0].attrib
             bbox = [box["top"], box["left"], box["width"], box["height"]]
@@ -37,11 +40,16 @@ def extract_annotations(labels_xml):
             assert len(annotation) == 147
 
             annotations.append(annotation)
+            correct_img_num += 1
         except Exception as e:
+            error_num += 1
             print("例外args:", e.args)
             print(img_file)
             error_files.append(img_file)
             continue
+
+    print("correct img num: ", correct_img_num)
+    print("error img num: ", error_num)
 
     return annotations
 
@@ -57,6 +65,8 @@ if __name__ == '__main__':
             <part name="02" x="58" y="148" />
             ...
         img_dir: image dir
+
+    ex: python labels_xml_to_line.py /data/dataset/growing/traindata8979_20180601.xml /data/dataset/growing/growing_20180601
 
     Save:
         txt: label lines text(train text : test text = 90 : 10)

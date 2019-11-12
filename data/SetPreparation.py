@@ -29,7 +29,7 @@ def rotate(angle, center, landmark):
 
 
 class ImageDate():
-    def __init__(self, line, imgDir, num_labels, image_size=112):
+    def __init__(self, line, imgDir, num_labels, image_size, dataset):
         self.image_size = image_size
         line = line.strip().split()
         """
@@ -43,7 +43,7 @@ class ImageDate():
         #205: 模糊(blur)         0->清晰(clear)                    1->模糊(blur)
         #206: 图片名称
         num_labels = 68
-        #0-135: landmark 坐标点  136-139: bbox 坐标点;
+        #0-135: landmark 坐标点  136-139: bbox 坐标点(x, y, w, h);
         #140: 姿态(pose)         0->正常姿态(normal pose)          1->大的姿态(large pose)
         #141: 表情(expression)   0->正常表情(normal expression)    1->夸张的表情(exaggerate expression)
         #142: 照度(illumination) 0->正常照明(normal illumination)  1->极端照明(extreme illumination)
@@ -53,7 +53,10 @@ class ImageDate():
         #146: image path
         """
         if num_labels == 68:
-            line = self.remove_unuse_land(line)
+            if dataset == "WFLW":
+                line = self.remove_unuse_land(line)
+            if len(line) != 147:
+                import pdb;pdb.set_trace()
             assert(len(line) == 147)
             self.tracked_points = [17, 21, 22, 26, 36, 39, 42, 45, 31, 35, 48, 54, 57, 8]
             self.list = line
@@ -150,7 +153,10 @@ class ImageDate():
         xy = center - boxsize // 2
         x1, y1 = xy
         x2, y2 = xy + boxsize
-        height, width, _ = img.shape
+        try:
+            height, width, _ = img.shape
+        except Exception as e:
+            import pdb;pdb.set_trace()
         # 顔枠の左上 or 画像の左上縁
         dx = max(0, -x1)
         dy = max(0, -y1)
@@ -260,7 +266,7 @@ class ImageDate():
         return labels
 
 
-def get_dataset_list(imgDir, outDir, landmarkDir, is_train, num_labels):
+def get_dataset_list(imgDir, outDir, landmarkDir, is_train, num_labels, image_size, dataset):
     with open(landmarkDir, 'r') as f:
         lines = f.readlines()
         labels = []
@@ -271,7 +277,7 @@ def get_dataset_list(imgDir, outDir, landmarkDir, is_train, num_labels):
         if debug:
             lines = lines[:100]
         for i, line in enumerate(lines):
-            Img = ImageDate(line, imgDir, num_labels)
+            Img = ImageDate(line, imgDir, num_labels, image_size, dataset)
             img_name = Img.path
             Img.load_data(is_train, 10, Mirror_file)
             _, filename = os.path.split(img_name)
@@ -334,6 +340,7 @@ if __name__ == '__main__':
     landmarkTestName = config.get(section, 'landmarkTestName')
     outTrainDir = config.get(section, 'outTrainDir')
     outTestDir = config.get(section, 'outTestDir')
+    image_size = int(config.get(section, 'ImageSize'))
     print(imageDirs)
     print(Mirror_file)
     print(landmarkTrainDir)
@@ -341,6 +348,7 @@ if __name__ == '__main__':
     print(landmarkTestName)
     print(outTrainDir)
     print(outTestDir)
+    print(image_size)
 
     landmarkDirs = [landmarkTestDir, landmarkTrainDir]
 
@@ -355,5 +363,5 @@ if __name__ == '__main__':
             is_train = False
         else:
             is_train = True
-        imgs = get_dataset_list(imageDirs, outDir, landmarkDir, is_train, int(num_labels))
+        imgs = get_dataset_list(imageDirs, outDir, landmarkDir, is_train, int(num_labels), image_size, dataset)
     print('end')

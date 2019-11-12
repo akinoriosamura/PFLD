@@ -16,9 +16,9 @@ from generate_data import gen_data
 
 def main():
     num_labels = 98
-    saved_target = "./models2/save_models/98/1107/"
+    saved_target = "./models2/save_models/98/1111/"
     meta_file = saved_target + 'model.meta'
-    ckpt_file = saved_target + 'model.ckpt-5'
+    ckpt_file = saved_target + 'model.ckpt-35'
     # test_list = './data/300w_image_list.txt'
 
     image_size = 112
