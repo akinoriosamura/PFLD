@@ -66,6 +66,8 @@ if __name__ == '__main__':
             ...
         img_dir: image dir
 
+    growing dataはタブがファイル名にあるので変換の必要あり
+    ex: find . -name "* *" | rename 's/ /_/g'
     ex: python labels_xml_to_line.py /data/dataset/growing/traindata8979_20180601.xml /data/dataset/growing/growing_20180601
 
     Save:
