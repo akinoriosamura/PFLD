@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 num_labels=68
-depth_multi=0.5 # default = 1, like model complicated
-save_model=./models2/save_models/68/1113
-file_list=data/train_WFLW_68_data/list.txt
-test_list=data/test_WFLW_68_data/list.txt
+depth_multi=1 # default = 1, like model complicated
+save_model=./models2/save_models/pcn_WFLW_68/1113
+file_list=data/non_rotated_train_pcn_WFLW_68_data/list.txt
+test_list=data/non_rotated_test_pcn_WFLW_68_data/list.txt
 pre_model=models2/trained_models/WFLW_68/PFLD68WFLW_models_1112
 lr=0.0001
 
