@@ -324,7 +324,8 @@ if __name__ == '__main__':
         num_labels = sys.argv[2]
         rotate = sys.argv[3]
     else:
-        print("please set arg(dataset_name num_labels rotate) ex: python SetPreparation.py WFLW 98 rotate")
+        print("please set arg(dataset_name num_labels rotate) ex: python SetPreparation.py pcnWFLW 68 nonrotate")
+        print("if you use pcn dataset, add nonrotate")
         exit()
 
     root_dir = os.path.dirname(os.path.realpath(__file__))
@@ -344,7 +345,6 @@ if __name__ == '__main__':
     landmarkTestName = config.get(section, 'landmarkTestName')
     outTrainDir = config.get(section, 'outTrainDir')
     outTestDir = config.get(section, 'outTestDir')
-    import pdb;pdb.set_trace()
     if rotate=="rotate":
         outTrainDir = "rotated_" + outTrainDir
         outTestDir = "rotated_" + outTestDir
