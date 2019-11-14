@@ -131,7 +131,7 @@ class ImageDate():
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    def load_data(self, is_train, is_rotate, repeat, mirror=None):
+    def load_data(self, is_train, rotate, repeat, mirror=None):
         if (mirror is not None):
             with open(mirror, 'r') as f:
                 lines = f.readlines()
@@ -193,7 +193,7 @@ class ImageDate():
         self.imgs.append(imgT)
         self.landmarks.append(landmark)
 
-        if is_rotate:
+        if rotate=="rotate":
             # =========データ拡張=========
             while len(self.imgs) < repeat:
                 angle = np.random.randint(-20, 20)
@@ -266,7 +266,7 @@ class ImageDate():
         return labels
 
 
-def get_dataset_list(imgDir, outDir, landmarkDir, is_train, is_rotate, num_labels, image_size, dataset):
+def get_dataset_list(imgDir, outDir, landmarkDir, is_train, rotate, num_labels, image_size, dataset):
     with open(landmarkDir, 'r') as f:
         lines = f.readlines()
         labels = []
@@ -280,7 +280,7 @@ def get_dataset_list(imgDir, outDir, landmarkDir, is_train, is_rotate, num_label
         for i, line in enumerate(lines):
             Img = ImageDate(line, imgDir, num_labels, image_size, dataset)
             img_name = Img.path
-            Img.load_data(is_train, is_rotate, 10, Mirror_file)
+            Img.load_data(is_train, rotate, 10, Mirror_file)
             _, filename = os.path.split(img_name)
             filename, _ = os.path.splitext(filename)
             label_txt = Img.save_data(save_img, str(i) + '_' + filename)
@@ -319,12 +319,12 @@ if __name__ == '__main__':
     """
 
     # ex: python SetPreparation.py WFLW 98
-    if len(sys.argv) == 3:
+    if len(sys.argv) == 4:
         dataset = sys.argv[1]
         num_labels = sys.argv[2]
-        is_rotate = sys.argv[3]
+        rotate = sys.argv[3]
     else:
-        print("please set arg(dataset_name num_labels is_rotate) ex: python SetPreparation.py WFLW 98 True")
+        print("please set arg(dataset_name num_labels rotate) ex: python SetPreparation.py WFLW 98 rotate")
         exit()
 
     root_dir = os.path.dirname(os.path.realpath(__file__))
@@ -344,7 +344,8 @@ if __name__ == '__main__':
     landmarkTestName = config.get(section, 'landmarkTestName')
     outTrainDir = config.get(section, 'outTrainDir')
     outTestDir = config.get(section, 'outTestDir')
-    if is_rotate:
+    import pdb;pdb.set_trace()
+    if rotate=="rotate":
         outTrainDir = "rotated_" + outTrainDir
         outTestDir = "rotated_" + outTestDir
     else:
@@ -373,5 +374,5 @@ if __name__ == '__main__':
             is_train = False
         else:
             is_train = True
-        imgs = get_dataset_list(imageDirs, outDir, landmarkDir, is_train, is_rotate, int(num_labels), image_size, dataset)
+        imgs = get_dataset_list(imageDirs, outDir, landmarkDir, is_train, rotate, int(num_labels), image_size, dataset)
     print('end')
