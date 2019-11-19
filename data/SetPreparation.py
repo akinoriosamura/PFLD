@@ -11,7 +11,7 @@ debug = False
 # debug = True
 
 
-def rotate(angle, center, landmark):
+def apply_rotate(angle, center, landmark):
     rad = angle * np.pi / 180.0
     alpha = np.cos(rad)
     beta = np.sin(rad)
@@ -200,7 +200,7 @@ class ImageDate():
                 cx, cy = center
                 cx = cx + int(np.random.randint(-boxsize * 0.1, boxsize * 0.1))
                 cy = cy + int(np.random.randint(-boxsize * 0.1, boxsize * 0.1))
-                M, landmark = rotate(angle, (cx, cy), self.landmark)
+                M, landmark = apply_rotate(angle, (cx, cy), self.landmark)
 
                 imgT = cv2.warpAffine(img, M, (int(img.shape[1] * 1.1), int(img.shape[0] * 1.1)))
                 wh = np.ptp(landmark, axis=0).astype(np.int32) + 1
@@ -346,9 +346,11 @@ if __name__ == '__main__':
     outTrainDir = config.get(section, 'outTrainDir')
     outTestDir = config.get(section, 'outTestDir')
     if rotate=="rotate":
+        print("rotate")
         outTrainDir = "rotated_" + outTrainDir
         outTestDir = "rotated_" + outTestDir
     else:
+        print("non rotate")
         outTrainDir = "non_rotated_" + outTrainDir
         outTestDir = "non_rotated_" + outTestDir
     image_size = int(config.get(section, 'ImageSize'))
