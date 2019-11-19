@@ -105,7 +105,7 @@ def main(args):
         L2_loss = tf.add_n(tf.losses.get_regularization_losses())
         _sum_k = tf.reduce_sum(tf.map_fn(lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
         loss_sum = tf.reduce_sum(tf.square(landmark_batch - landmarks_pre), axis=1)
-        loss_sum = tf.reduce_mean(loss_sum * _sum_k * attributes_w_n)
+        loss_sum = tf.reduce_mean(loss_sum * _sum_k)#  * attributes_w_n)
         loss_sum += L2_loss
     
         train_op, lr_op = train_model(loss_sum, global_step, num_train_file, args)

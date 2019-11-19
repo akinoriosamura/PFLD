@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-save_model = "./models2/save_models/98/1111"
+save_model = "./models2/save_models/pcn_growing_68/1113"
 
 # モデルを変換
 converter = tf.lite.TFLiteConverter.from_saved_model(

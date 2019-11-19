@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-num_labels=98
+num_labels=68
 depth_multi=1 # default = 1, like model complicated
-save_model=./models2/save_models/98/1111
-pre_model=./models2/save_models/98/1111
+save_model=./models2/save_models/pcn_growing_68/1113
+pre_model=./models2/save_models/pcn_growing_68/1113
 lr=0.000000001
 
 # --pretrained_model=${pre_model} \
