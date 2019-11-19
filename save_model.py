@@ -48,11 +48,6 @@ def create_save_model(model_dir, graph, sess):
 
 
 def main(args):
-    debug = (args.debug == 'True')
-    print("args: ", args)
-    np.random.seed(args.seed)
-    time.sleep(3)
-
     with tf.Graph().as_default() as inf_g:
         image_batch = tf.placeholder(tf.float32, shape=(None, args.image_size, args.image_size, 3),
                                      name='image_batch')
@@ -65,6 +60,15 @@ def main(args):
 
         save_params = tf.trainable_variables()
         saver = tf.train.Saver(save_params, max_to_keep=None)
+        # quantize
+        tf.contrib.quantize.experimental_create_eval_graph(
+            input_graph=inf_g,
+            weight_bits=16,
+            activation_bits=16,
+            symmetric=False,
+            quant_delay=None,
+            scope=None
+        )
 
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0)
         inf_sess = tf.Session(
@@ -106,7 +110,6 @@ def parse_arguments(argv):
     parser.add_argument('--weight_decay', type=float, default=5e-5)
     parser.add_argument('--level', type=str, default='L5')
     parser.add_argument('--save_image_example', action='store_false')
-    parser.add_argument('--debug', type=str, default='False')
     parser.add_argument('--depth_multi', type=int, default=1)
     return parser.parse_args(argv)
 
