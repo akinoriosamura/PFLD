@@ -2,76 +2,92 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
+from pfld import create_model
+from generate_data import gen_data
+
+
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 # print('pid: {}     GPU: {}'.format(os.getpid(), os.environ['CUDA_VISIBLE_DEVICES']))
 import tensorflow as tf
+from tensorflow.python.framework import graph_util
 import numpy as np
 import cv2
 import shutil
 import time
+import argparse
+import sys
+import os
 
-from generate_data import gen_data
 
-
-def main():
-    num_labels = 68
-    saved_target = "./models2/save_models/pcn_growing_68/1113/"
-    meta_file = saved_target + 'model.meta'
-    ckpt_file = saved_target + 'model.ckpt-89'
-    # test_list = './data/300w_image_list.txt'
-
-    image_size = 112
-
-    image_files = 'data/test_WFLW_68_data/list.txt'
-    out_dir = 'sample_WFLW_test_result'
-    if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
+def main(args):
+    print("args: ", args)
+    if not os.path.exists(args.out_dir):
+        os.mkdir(args.out_dir)
     else:
-        shutil.rmtree(out_dir)
-        os.mkdir(out_dir)
+        shutil.rmtree(args.out_dir)
+        os.mkdir(args.out_dir)
 
-    with tf.Graph().as_default():
-        with tf.Session() as sess:
-            print('Loading feature extraction model.')
-            saver = tf.train.import_meta_graph(meta_file)
-            saver.restore(tf.get_default_session(), ckpt_file)
+    with tf.Graph().as_default() as inf_g:
+        image_batch = tf.placeholder(tf.float32, shape=(None, args.image_size, args.image_size, 3),
+                                     name='image_batch')
+        landmark_batch = tf.placeholder(tf.float32, shape=(
+            None, args.num_labels * 2), name='landmark_batch')
 
-            graph = tf.get_default_graph()
-            images_placeholder = graph.get_tensor_by_name('image_batch:0')
-            phase_train_placeholder = graph.get_tensor_by_name('phase_train:0')
+        phase_train_placeholder = tf.constant(False, name='phase_train')
+        landmarks_pre, _, _ = create_model(
+            image_batch, landmark_batch, phase_train_placeholder, args)
 
-            """
-            landmark_L1 = graph.get_tensor_by_name('landmark_L1:0')
-            landmark_L2 = graph.get_tensor_by_name('landmark_L2:0')
-            landmark_L3 = graph.get_tensor_by_name('landmark_L3:0')
-            landmark_L4 = graph.get_tensor_by_name('landmark_L4:0')
-            landmark_L5 = graph.get_tensor_by_name('landmark_L5:0')
-            landmark_total = [landmark_L1, landmark_L2, landmark_L3, landmark_L4, landmark_L5]
-            """
-            landmark_total = graph.get_tensor_by_name(
-                'pfld_inference/fc/BiasAdd:0')
+        save_params = tf.trainable_variables()
+        saver = tf.train.Saver(save_params, max_to_keep=None)
+        # quantize
+        tf.contrib.quantize.experimental_create_eval_graph(
+            input_graph=inf_g,
+            weight_bits=16,
+            activation_bits=16,
+            symmetric=False,
+            quant_delay=None,
+            scope=None
+        )
+
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0)
+        inf_sess = tf.Session(
+            graph=inf_g,
+            config=tf.ConfigProto(
+                gpu_options=gpu_options,
+                allow_soft_placement=False,
+                log_device_placement=False))
+        inf_sess.run(tf.global_variables_initializer())
+        inf_sess.run(tf.local_variables_initializer())
+
+        with inf_sess.as_default():
+            print('Model directory: {}'.format(args.pretrained_model))
+            ckpt = tf.train.get_checkpoint_state(args.pretrained_model)
+            print('ckpt: {}'.format(ckpt))
+            model_path = ckpt.model_checkpoint_path
+            assert (ckpt and model_path)
+            epoch_start = int(
+                model_path[model_path.find('model.ckpt-') + 11:]) + 1
+            print('Checkpoint file: {}'.format(model_path))
+            saver.restore(inf_sess, model_path)
 
             file_list, train_landmarks, train_attributes, euler_angles = gen_data(
-                image_files, num_labels)
+                args.test_list, args.num_labels)
             print(file_list)
             for file in file_list:
                 filename = os.path.split(file)[-1]
                 image = cv2.imread(file)
                 # image = cv2.resize(image, (image_size, image_size))
                 input = cv2.cvtColor(image.copy(), cv2.COLOR_BGR2RGB)
-                input = cv2.resize(input, (image_size, image_size))
+                input = cv2.resize(input, (args.image_size, args.image_size))
                 input = input.astype(np.float32) / 256.0
                 input = np.expand_dims(input, 0)
                 # print(input.shape)
 
                 feed_dict = {
-                    images_placeholder: input,
-                    phase_train_placeholder: False
+                    image_batch: input
                 }
-
                 st = time.time()
-                pre_landmarks = sess.run(landmark_total, feed_dict=feed_dict)
+                pre_landmarks = inf_sess.run(landmarks_pre, feed_dict=feed_dict)
                 # print(pre_landmarks)
                 print("elaps: ", time.time() - st)
                 pre_landmark = pre_landmarks[0]
@@ -80,9 +96,30 @@ def main():
                 pre_landmark = pre_landmark.reshape(-1, 2) * [h, w]
                 for (x, y) in pre_landmark.astype(np.int32):
                     cv2.circle(image, (x, y), 1, (0, 0, 255))
-                print(os.path.join(out_dir, filename))
-                cv2.imwrite(os.path.join(out_dir, filename), image)
+                print(os.path.join(args.out_dir, filename))
+                cv2.imwrite(os.path.join(args.out_dir, filename), image)
+
+def parse_arguments(argv):
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--seed', type=int, default=666)
+    parser.add_argument('--max_epoch', type=int, default=1000)
+    parser.add_argument('--test_list', type=str, default='data/test_data/list.txt')
+    parser.add_argument('--image_size', type=int, default=112)
+    parser.add_argument('--num_labels', type=int, default=98)
+    parser.add_argument('--image_channels', type=int, default=3)
+    parser.add_argument('--batch_size', type=int, default=64)
+    parser.add_argument('--pretrained_model', type=str, default=None)
+    parser.add_argument('--learning_rate', type=float, default=0.001)
+    parser.add_argument('--lr_epoch', type=str, default='10,20,30,40,200,500')
+    parser.add_argument('--weight_decay', type=float, default=5e-5)
+    parser.add_argument('--level', type=str, default='L5')
+    parser.add_argument('--save_image_example', action='store_false')
+    parser.add_argument('--depth_multi', type=int, default=1)
+    parser.add_argument('--out_dir', type=str, default='sample_result')
+    return parser.parse_args(argv)
 
 
 if __name__ == '__main__':
-    main()
+    print(sys.argv)
+    main(parse_arguments(sys.argv[1:]))
