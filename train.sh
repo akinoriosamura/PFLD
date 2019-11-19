@@ -9,6 +9,8 @@ lr=0.0001
 
 # --pretrained_model=${pre_model} \
 # CUDA_VISIBLE_DEVICES='' \
+export TF_XLA_FLAGS=--tf_xla_cpu_global_jit
+export XLA_FLAGS=--xla_hlo_profile
 python -u train_model.py --model_dir=${save_model} \
                                --pretrained_model=${pre_model} \
                                --file_list=${file_list} \
