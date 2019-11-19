@@ -2,7 +2,8 @@
 phase=$1
 num_labels=68
 depth_multi=1 # default = 1, like model complicated
-save_model=models2/save_models/quant_growing_pre_WFLW
+num_quant=64
+save_model=models2/save_models/sample_q
 file_list=data/train_growing_data/list.txt
 test_list=data/test_growing_data/list.txt
 pre_model=models2/save_models/growing_pre_WFLW
@@ -26,7 +27,8 @@ if [ ${phase} = "pretrain" ]; then
                                 --debug=False \
                                 --image_size=112 \
                                 --batch_size=128 \
-                                --depth_multi=${depth_multi}
+                                --depth_multi=${depth_multi} \
+                                --num_quant=${num_quant}
 elif [ ${phase} = "train" ]; then
     echo "run train"
     python -u train_model.py --model_dir=${save_model} \
@@ -38,7 +40,8 @@ elif [ ${phase} = "train" ]; then
                                 --debug=False \
                                 --image_size=112 \
                                 --batch_size=128 \
-                                --depth_multi=${depth_multi}
+                                --depth_multi=${depth_multi} \
+                                --num_quant=${num_quant}
 elif [ ${phase} = "save" ]; then
     echo "run save"
     python -u save_model.py --model_dir=${save_model} \
@@ -48,7 +51,8 @@ elif [ ${phase} = "save" ]; then
                             --level=L1 \
                             --image_size=112 \
                             --batch_size=128 \
-                            --depth_multi=${depth_multi}
+                            --depth_multi=${depth_multi} \
+                            --num_quant=${num_quant}
 
 elif [ "${phase}" = 'test' ]; then
     echo "run test"
@@ -60,7 +64,8 @@ elif [ "${phase}" = 'test' ]; then
                             --image_size=112 \
                             --batch_size=128 \
                             --depth_multi=${depth_multi} \
-                            --out_dir=${out_dir}
+                            --out_dir=${out_dir} \
+                            --num_quant=${num_quant}
 else
     echo "no running"
 fi

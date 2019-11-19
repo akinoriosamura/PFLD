@@ -18,6 +18,7 @@ import numpy as np
 import cv2
 import argparse
 import sys
+import shutil
 # import matplotlib
 # matplotlib.use('Agg')
 
@@ -30,6 +31,11 @@ def main(args):
     print("args: ", args)
     np.random.seed(args.seed)
     time.sleep(3)
+    if not os.path.exists(args.model_dir):
+        os.mkdir(args.model_dir)
+    else:
+        shutil.rmtree(args.model_dir)
+        os.mkdir(args.model_dir)
 
     with tf.Graph().as_default() as g:
         train_dataset, num_train_file = DateSet(args.file_list, args, debug)
@@ -109,16 +115,19 @@ def main(args):
         loss_sum += L2_loss
 
         # quantize
-        # tf.contrib.quantize.create_training_graph(input_graph=g)
-        tf.contrib.quantize.experimental_create_training_graph(
-            input_graph=g,
-            weight_bits=16,
-            activation_bits=16,
-            symmetric=False,
-            quant_delay=0,
-            freeze_bn_delay=None,
-            scope=None
-        )
+        if args.num_quant < 64:
+            print("quantize by: ", args.num_quant)
+            tf.contrib.quantize.experimental_create_training_graph(
+                input_graph=g,
+                weight_bits=16,
+                activation_bits=16,
+                symmetric=False,
+                quant_delay=0,
+                freeze_bn_delay=None,
+                scope=None
+            )
+        else:
+            print("no quantize, so float: ", args.num_quant)
 
         train_op, lr_op = train_model(loss_sum, global_step, num_train_file, args)
 
@@ -402,6 +411,7 @@ def parse_arguments(argv):
     parser.add_argument('--save_image_example', action='store_false')
     parser.add_argument('--debug', type=str, default='False')
     parser.add_argument('--depth_multi', type=float, default=1)
+    parser.add_argument('--num_quant', type=int, default=64)
     return parser.parse_args(argv)
 
 

@@ -40,14 +40,18 @@ def main(args):
         save_params = tf.trainable_variables()
         saver = tf.train.Saver(save_params, max_to_keep=None)
         # quantize
-        tf.contrib.quantize.experimental_create_eval_graph(
-            input_graph=inf_g,
-            weight_bits=16,
-            activation_bits=16,
-            symmetric=False,
-            quant_delay=None,
-            scope=None
-        )
+        if args.num_quant < 64:
+            print("quantize by: ", args.num_quant)
+            tf.contrib.quantize.experimental_create_eval_graph(
+                input_graph=inf_g,
+                weight_bits=16,
+                activation_bits=16,
+                symmetric=False,
+                quant_delay=None,
+                scope=None
+            )
+        else:
+            print("no quantize, so float: ", args.num_quant)
 
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0)
         inf_sess = tf.Session(
@@ -117,6 +121,7 @@ def parse_arguments(argv):
     parser.add_argument('--save_image_example', action='store_false')
     parser.add_argument('--depth_multi', type=int, default=1)
     parser.add_argument('--out_dir', type=str, default='sample_result')
+    parser.add_argument('--num_quant', type=int, default=64)
     return parser.parse_args(argv)
 
 
