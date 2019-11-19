@@ -31,7 +31,7 @@ def main(args):
     np.random.seed(args.seed)
     time.sleep(3)
 
-    with tf.Graph().as_default():
+    with tf.Graph().as_default() as g:
         train_dataset, num_train_file = DateSet(args.file_list, args, debug)
         test_dataset, num_test_file = DateSet(args.test_list, args, debug)
         list_ops = {}
@@ -107,7 +107,19 @@ def main(args):
         loss_sum = tf.reduce_sum(tf.square(landmark_batch - landmarks_pre), axis=1)
         loss_sum = tf.reduce_mean(loss_sum * _sum_k)#  * attributes_w_n)
         loss_sum += L2_loss
-    
+
+        # quantize
+        # tf.contrib.quantize.create_training_graph(input_graph=g)
+        tf.contrib.quantize.experimental_create_training_graph(
+            input_graph=g,
+            weight_bits=16,
+            activation_bits=16,
+            symmetric=False,
+            quant_delay=0,
+            freeze_bn_delay=None,
+            scope=None
+        )
+
         train_op, lr_op = train_model(loss_sum, global_step, num_train_file, args)
 
         list_ops['landmarks'] = landmarks_pre
@@ -131,7 +143,7 @@ def main(args):
         saver = tf.train.Saver(save_params, max_to_keep=None)
 
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0)
-        sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=False, log_device_placement=False))
+        sess = tf.Session(graph=g, config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=False, log_device_placement=False))
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 
