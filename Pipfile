@@ -57,6 +57,8 @@ Werkzeug = "==0.15.1"
 scikit-learn = "*"
 configparser = "*"
 imgaug = "*"
+imageio = "*"
+shapely = "*"
 
 [requires]
 python_version = "3.6"
