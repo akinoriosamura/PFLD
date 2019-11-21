@@ -175,10 +175,11 @@ def main(args):
 
 
             for epoch in range(epoch_start, args.max_epoch):
-                print("============ get data ===============")
                 # shuffle and data augment 
+                print("============ get train data ===============")
                 train_dataset = train_loader.gen_tfrecord()
                 num_train_file = train_loader.num_file
+                print("============ get test data ===============")
                 test_dataset = test_loader.gen_tfrecord()
                 num_test_file = test_loader.num_file
 
