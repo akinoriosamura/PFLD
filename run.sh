@@ -3,9 +3,9 @@ phase=$1
 num_labels=68
 depth_multi=1 # default = 1, like model complicated
 num_quant=64
-save_model=models2/save_models/sample_q
-file_list=data/train_growing_data/list.txt
-test_list=data/test_growing_data/list.txt
+save_model=models2/save_models/68/aug_WFLW_68
+file_list=data/train_WFLW_68_data/list.txt
+test_list=data/test_WFLW_68_data/list.txt
 pre_model=models2/save_models/growing_pre_WFLW
 out_dir=sample_result
 lr=0.0001

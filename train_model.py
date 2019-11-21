@@ -196,6 +196,9 @@ def main(args):
                     print('Total number of examples: {}'.format(num_train_file))
                     print('Test number of examples: {}'.format(num_test_file))
 
+                    list_ops['num_train_file'] = num_train_file
+                    list_ops['num_test_file'] = num_test_file
+
                     list_ops['train_dataset'] = train_dataset
                     list_ops['test_dataset'] = test_dataset
                     list_ops['train_next_element'] = train_next_element
