@@ -4,7 +4,8 @@ from __future__ import division
 from __future__ import print_function
 from utils import train_model
 from pfld import create_model
-from generate_data import DateSet
+from generate_data import DataLoader
+from data_augmentor import DataAugmentator
 import time
 import math
 # import matplotlib.pyplot as plt
@@ -38,44 +39,32 @@ def main(args):
         os.mkdir(args.model_dir)
 
     with tf.Graph().as_default() as g:
-        train_dataset, num_train_file = DateSet(args.file_list, args, debug)
-        test_dataset, num_test_file = DateSet(args.test_list, args, debug)
         list_ops = {}
 
-        batch_train_dataset = train_dataset.batch(args.batch_size).repeat()
-        train_iterator = batch_train_dataset.make_one_shot_iterator()
-        train_next_element = train_iterator.get_next()
-
-        batch_test_dataset = test_dataset.batch(args.batch_size).repeat()
-        test_iterator = batch_test_dataset.make_one_shot_iterator()
-        test_next_element = test_iterator.get_next()
-
-        list_ops['num_train_file'] = num_train_file
-        list_ops['num_test_file'] = num_test_file
-
         model_dir = args.model_dir
+        print('Model dir: {}'.format(model_dir))
         # if 'test' in model_dir and debug and os.path.exists(model_dir):
         #     import shutil
         #     shutil.rmtree(model_dir)
         # assert not os.path.exists(model_dir)
         # os.mkdir(model_dir)
 
-        print('Total number of examples: {}'.format(num_train_file))
-        print('Test number of examples: {}'.format(num_test_file))
-        print('Model dir: {}'.format(model_dir))
-
-        tf.set_random_seed(args.seed)
-        global_step = tf.Variable(0, trainable=False)
-
-        list_ops['global_step'] = global_step
-        list_ops['train_dataset'] = train_dataset
-        list_ops['test_dataset'] = test_dataset
-        list_ops['train_next_element'] = train_next_element
-        list_ops['test_next_element'] = test_next_element
+        # ============== get dataset ==============
+        print("============== get dataloader ==============")
+        train_loader = DataLoader(args.file_list, args, "train", debug)
+        test_loader = DataLoader(args.test_list, args, "test", debug)
+        num_train_file = train_loader.num_file
 
         epoch_size = num_train_file // args.batch_size
         print('Number of batches per epoch: {}'.format(epoch_size))
 
+
+        tf.set_random_seed(args.seed)
+        global_step = tf.Variable(0, trainable=False)
+        list_ops['global_step'] = global_step
+    
+        # ================== create models ================
+        print("=================== create models ===============")
         # input node
         image_batch = tf.placeholder(tf.float32, shape=(None, args.image_size, args.image_size, 3),
                                      name='image_batch')
@@ -156,9 +145,13 @@ def main(args):
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 
+        # =============== finish creating graph =============
+
         with sess.as_default():
 
             epoch_start = 0
+            # ============ resotre pretrain =============
+            print("================= resotre pretrain if exist =================")
             if args.pretrained_model:
                 pretrained_model = args.pretrained_model
                 print("path: ", os.path.isdir(pretrained_model))
@@ -177,15 +170,37 @@ def main(args):
             # if args.save_image_example:
             #     save_image_example(sess, list_ops, args)
 
-            print('Running train.')
-
             merged = tf.summary.merge_all()
             train_write = tf.summary.FileWriter(log_dir, sess.graph)
 
+
             for epoch in range(epoch_start, args.max_epoch):
+                print("============ get data ===============")
+                # shuffle and data augment 
+                train_dataset = train_loader.gen_tfrecord()
+                num_train_file = train_loader.num_file
+                test_dataset = test_loader.gen_tfrecord()
+                num_test_file = test_loader.num_file
+
+                batch_train_dataset = train_dataset.batch(args.batch_size).repeat()
+                train_iterator = batch_train_dataset.make_one_shot_iterator()
+                train_next_element = train_iterator.get_next()
+
+                batch_test_dataset = test_dataset.batch(args.batch_size).repeat()
+                test_iterator = batch_test_dataset.make_one_shot_iterator()
+                test_next_element = test_iterator.get_next()
+
+                print('Total number of examples: {}'.format(num_train_file))
+                print('Test number of examples: {}'.format(num_test_file))
+
+                list_ops['train_dataset'] = train_dataset
+                list_ops['test_dataset'] = test_dataset
+                list_ops['train_next_element'] = train_next_element
+                list_ops['test_next_element'] = test_next_element
+
                 print("train start")
                 start = time.time()
-                train_L, train_L2 = train(sess, epoch_size, epoch, list_ops)
+                train_L, train_L2 = train(sess, epoch_size, epoch, list_ops, args)
                 print("train time: {}" .format(time.time() - start))
 
                 summary, _, _ = sess.run(
@@ -221,7 +236,7 @@ def main(args):
                     train_write.add_summary(summary, epoch)
                 
 
-def train(sess, epoch_size, epoch, list_ops):
+def train(sess, epoch_size, epoch, list_ops, args):
 
     image_batch, landmarks_batch, attribute_batch, euler_batch = list_ops['train_next_element']
 
