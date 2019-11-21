@@ -176,28 +176,30 @@ def main(args):
 
             for epoch in range(epoch_start, args.max_epoch):
                 # shuffle and data augment 
-                print("============ get train data ===============")
-                train_dataset = train_loader.gen_tfrecord()
-                num_train_file = train_loader.num_file
-                print("============ get test data ===============")
-                test_dataset = test_loader.gen_tfrecord()
-                num_test_file = test_loader.num_file
+                # epoch 5の倍数の時のみdata shuffle and augment 作成
+                if epoch % 5 == 0:
+                    print("============ get train data ===============")
+                    train_dataset = train_loader.gen_tfrecord()
+                    num_train_file = train_loader.num_file
+                    print("============ get test data ===============")
+                    test_dataset = test_loader.gen_tfrecord()
+                    num_test_file = test_loader.num_file
 
-                batch_train_dataset = train_dataset.batch(args.batch_size).repeat()
-                train_iterator = batch_train_dataset.make_one_shot_iterator()
-                train_next_element = train_iterator.get_next()
+                    batch_train_dataset = train_dataset.batch(args.batch_size).repeat()
+                    train_iterator = batch_train_dataset.make_one_shot_iterator()
+                    train_next_element = train_iterator.get_next()
 
-                batch_test_dataset = test_dataset.batch(args.batch_size).repeat()
-                test_iterator = batch_test_dataset.make_one_shot_iterator()
-                test_next_element = test_iterator.get_next()
+                    batch_test_dataset = test_dataset.batch(args.batch_size).repeat()
+                    test_iterator = batch_test_dataset.make_one_shot_iterator()
+                    test_next_element = test_iterator.get_next()
 
-                print('Total number of examples: {}'.format(num_train_file))
-                print('Test number of examples: {}'.format(num_test_file))
+                    print('Total number of examples: {}'.format(num_train_file))
+                    print('Test number of examples: {}'.format(num_test_file))
 
-                list_ops['train_dataset'] = train_dataset
-                list_ops['test_dataset'] = test_dataset
-                list_ops['train_next_element'] = train_next_element
-                list_ops['test_next_element'] = test_next_element
+                    list_ops['train_dataset'] = train_dataset
+                    list_ops['test_dataset'] = test_dataset
+                    list_ops['train_next_element'] = train_next_element
+                    list_ops['test_next_element'] = test_next_element
 
                 print("train start")
                 start = time.time()
