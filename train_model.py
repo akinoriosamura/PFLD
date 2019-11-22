@@ -32,22 +32,13 @@ def main(args):
     print("args: ", args)
     np.random.seed(args.seed)
     time.sleep(3)
-    if not os.path.exists(args.model_dir):
-        os.mkdir(args.model_dir)
-    else:
-        shutil.rmtree(args.model_dir)
-        os.mkdir(args.model_dir)
 
     with tf.Graph().as_default() as g:
         list_ops = {}
 
         model_dir = args.model_dir
         print('Model dir: {}'.format(model_dir))
-        # if 'test' in model_dir and debug and os.path.exists(model_dir):
-        #     import shutil
-        #     shutil.rmtree(model_dir)
-        # assert not os.path.exists(model_dir)
-        # os.mkdir(model_dir)
+        os.makedirs(model_dir, exist_ok=True)
 
         # ============== get dataset ==============
         print("============== get dataloader ==============")
