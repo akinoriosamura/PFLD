@@ -6,9 +6,10 @@ num_quant=64
 save_model=models2/save_models/68/aug_WFLW_68
 file_list=data/train_WFLW_68_data/list.txt
 test_list=data/test_WFLW_68_data/list.txt
-pre_model=models2/save_models/growing_pre_WFLW
+pre_model=models2/save_models/68/aug_WFLW_68
 out_dir=sample_result
 lr=0.0001
+is_augment=False  # True or False
 
 # --pretrained_model=${pre_model} \
 # CUDA_VISIBLE_DEVICES='' \
@@ -28,7 +29,8 @@ if [ ${phase} = "pretrain" ]; then
                                 --image_size=112 \
                                 --batch_size=128 \
                                 --depth_multi=${depth_multi} \
-                                --num_quant=${num_quant}
+                                --num_quant=${num_quant} \
+                                --is_augment=${is_augment}
 elif [ ${phase} = "train" ]; then
     echo "run train"
     python -u train_model.py --model_dir=${save_model} \
@@ -41,7 +43,8 @@ elif [ ${phase} = "train" ]; then
                                 --image_size=112 \
                                 --batch_size=128 \
                                 --depth_multi=${depth_multi} \
-                                --num_quant=${num_quant}
+                                --num_quant=${num_quant} \
+                                --is_augment=${is_augment}
 elif [ ${phase} = "save" ]; then
     echo "run save"
     python -u save_model.py --model_dir=${save_model} \
@@ -52,7 +55,8 @@ elif [ ${phase} = "save" ]; then
                             --image_size=112 \
                             --batch_size=128 \
                             --depth_multi=${depth_multi} \
-                            --num_quant=${num_quant}
+                            --num_quant=${num_quant} \
+                            --is_augment=${is_augment}
 
 elif [ "${phase}" = 'test' ]; then
     echo "run test"
@@ -65,7 +69,8 @@ elif [ "${phase}" = 'test' ]; then
                             --batch_size=128 \
                             --depth_multi=${depth_multi} \
                             --out_dir=${out_dir} \
-                            --num_quant=${num_quant}
+                            --num_quant=${num_quant} \
+                            --is_augment=${is_augment}
 else
     echo "no running"
 fi

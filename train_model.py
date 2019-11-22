@@ -404,6 +404,14 @@ def save_image_example(sess, list_ops, args):
 
 
 def parse_arguments(argv):
+    def str2bool(v):
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected.')
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--file_list', type=str, default='data/train_data/list.txt')
@@ -424,6 +432,8 @@ def parse_arguments(argv):
     parser.add_argument('--debug', type=str, default='False')
     parser.add_argument('--depth_multi', type=float, default=1)
     parser.add_argument('--num_quant', type=int, default=64)
+    parser.add_argument('--is_augment', type=str2bool, default=False, help='Whether to augment')
+
     return parser.parse_args(argv)
 
 

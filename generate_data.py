@@ -93,13 +93,16 @@ class DataLoader():
             
         self.images = np.array(list(map(_parse_data, self.file_list)))
         self.images_shape = list(self.images.shape)
-        if self.phase == "train":
+        if self.phase == "train" and self.args.is_augment:
             print("======= augment =========")
+            tfrecord_path = "./data/augment_" + self.phase + ".tfrecords"
             augments = np.array(list(map(self.dataaugmentor.augment_image, self.images, self.landmarks)))
             self.images = np.array(list(augments[:, 0]))
             self.landmarks = np.array(list(augments[:, 1]))
+        else:
+            print("======= not augment =========")
+            tfrecord_path = "./data/unaugment_" + self.phase + ".tfrecords"
         self.images = np.array(list(map(_normalize, self.images)))
-        tfrecord_path = "./data/augment_" + self.phase + ".tfrecords"
         self.write_tfrecord(tfrecord_path)
         print("save in record dataset : ", tfrecord_path)
 
