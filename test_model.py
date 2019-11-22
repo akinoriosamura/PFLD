@@ -104,6 +104,14 @@ def main(args):
                 cv2.imwrite(os.path.join(args.out_dir, filename), image)
 
 def parse_arguments(argv):
+    def str2bool(v):
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected.')
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--seed', type=int, default=666)
@@ -119,9 +127,11 @@ def parse_arguments(argv):
     parser.add_argument('--weight_decay', type=float, default=5e-5)
     parser.add_argument('--level', type=str, default='L5')
     parser.add_argument('--save_image_example', action='store_false')
-    parser.add_argument('--depth_multi', type=int, default=1)
+    parser.add_argument('--depth_multi', type=float, default=1)
     parser.add_argument('--out_dir', type=str, default='sample_result')
     parser.add_argument('--num_quant', type=int, default=64)
+    parser.add_argument('--is_augment', type=str2bool, default=False, help='Whether to augment')
+
     return parser.parse_args(argv)
 
 

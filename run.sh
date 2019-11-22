@@ -1,12 +1,12 @@
 #!/bin/bash
 phase=$1
 num_labels=68
-depth_multi=1 # default = 1, like model complicated
+depth_multi=0.25 # default = 1, like model complicated
 num_quant=64
-save_model=models2/save_models/68/aug_WFLW_68
+save_model=models2/save_models/68/dm025_WFLW_68
 file_list=data/train_WFLW_68_data/list.txt
 test_list=data/test_WFLW_68_data/list.txt
-pre_model=models2/save_models/68/aug_WFLW_68
+pre_model=models2/save_models/68/dm025_WFLW_68
 out_dir=sample_result
 lr=0.0001
 is_augment=False  # True or False

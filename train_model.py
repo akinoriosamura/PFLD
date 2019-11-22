@@ -168,7 +168,7 @@ def main(args):
             for epoch in range(epoch_start, args.max_epoch):
                 # shuffle and data augment 
                 # epoch 5の倍数の時のみdata shuffle and augment 作成
-                if epoch % 5 == 0:
+                if (epoch % 5 == 0) or ("train_next_element" not in list_ops):
                     print("============ get train data ===============")
                     train_dataset = train_loader.gen_tfrecord()
                     num_train_file = train_loader.num_file
