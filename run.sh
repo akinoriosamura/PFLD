@@ -3,7 +3,7 @@ phase=$1
 num_labels=68
 depth_multi=0.25 # default = 1, like model complicated
 num_quant=64
-save_model=models2/save_models/68/dm025_WFLW_68
+save_model=models2/save_models/68/dm025_growing_preWFLW_68
 file_list=data/train_WFLW_68_data/list.txt
 test_list=data/test_WFLW_68_data/list.txt
 pre_model=models2/save_models/68/dm025_WFLW_68

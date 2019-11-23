@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 from pfld import create_model
-from generate_data import gen_data
+from generate_data import DataLoader
 
 
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -74,7 +74,8 @@ def main(args):
             print('Checkpoint file: {}'.format(model_path))
             saver.restore(inf_sess, model_path)
 
-            file_list, train_landmarks, train_attributes, euler_angles = gen_data(
+            dataloader = DataLoader(args.test_list, args, "test")
+            file_list, train_landmarks, train_attributes, euler_angles = dataloader.gen_data(
                 args.test_list, args.num_labels)
             print(file_list)
             for file in file_list:
