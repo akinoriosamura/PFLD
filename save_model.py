@@ -11,6 +11,7 @@ import os
 
 import tensorflow as tf
 from tensorflow.python.framework import graph_util
+import tfcoreml as tf_converter
 import numpy as np
 import argparse
 import sys
@@ -46,17 +47,22 @@ def create_save_model(model_dir, graph, sess):
     builder.save()
     print("finish save saved_model")
 
+    # save tflite model
+    converter = tf.lite.TFLiteConverter.from_saved_model(save_model_dir)
+    # converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
+    tflite_model = converter.convert()
 
-def create_coreml_model(model_dir):
+    with open(os.path.join(model_dir, "pfld.tflite"), 'wb') as f:
+        f.write(tflite_model)
+
+
+def create_coreml_model(model_dir, args):
     # coreml変換
-    save_model_dir = os.path.join(model_dir, "SavedModel")
-    pb_p = os.path.join(save_model_dir, "saved_model.pb")
-    print("pb file path; ", os.path.join(model_dir, "original_frozen.pb"))
-    tf_converter.convert(tf_model_path=os.path.join(model_dir, "original_frozen.pb"),
-                        mlmodel_path=os.path.join(model_dir, 'mobile_unet.mlmodel'),
-                        input_name_shape_dict={'input:0':[1,256,256,3]},
-                        image_input_names=['input:0'],
-                        output_feature_names=['logits/BiasAdd:0']
+    tf_converter.convert(tf_model_path=os.path.join(model_dir, "original_98_frozen.pb"),
+                        mlmodel_path=os.path.join(model_dir, 'pfld.mlmodel'),
+                        input_name_shape_dict={'image_batch:0':[1,args.image_size,args.image_size,3]},
+                        image_input_names=['image_batch:0'],
+                        output_feature_names=['pfld_inference/fc/BiasAdd:0']
                         )
 
 
@@ -110,7 +116,7 @@ def main(args):
 
             create_save_model(args.model_dir, inf_g, inf_sess)
 
-create_coreml_model(args.model_dir)
+    create_coreml_model(args.model_dir, args)
 
 
 def parse_arguments(argv):

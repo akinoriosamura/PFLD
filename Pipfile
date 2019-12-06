@@ -59,6 +59,7 @@ configparser = "*"
 imgaug = "*"
 imageio = "*"
 shapely = "*"
+tf-coreml = {git = "https://github.com/akinoriosamura/tf-coreml.git"}
 
 [requires]
 python_version = "3.6"
