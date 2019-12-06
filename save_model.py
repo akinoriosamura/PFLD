@@ -47,6 +47,19 @@ def create_save_model(model_dir, graph, sess):
     print("finish save saved_model")
 
 
+def create_coreml_model(model_dir):
+    # coreml変換
+    save_model_dir = os.path.join(model_dir, "SavedModel")
+    pb_p = os.path.join(save_model_dir, "saved_model.pb")
+    print("pb file path; ", os.path.join(model_dir, "original_frozen.pb"))
+    tf_converter.convert(tf_model_path=os.path.join(model_dir, "original_frozen.pb"),
+                        mlmodel_path=os.path.join(model_dir, 'mobile_unet.mlmodel'),
+                        input_name_shape_dict={'input:0':[1,256,256,3]},
+                        image_input_names=['input:0'],
+                        output_feature_names=['logits/BiasAdd:0']
+                        )
+
+
 def main(args):
     with tf.Graph().as_default() as inf_g:
         image_batch = tf.placeholder(tf.float32, shape=(None, args.image_size, args.image_size, 3),
@@ -96,6 +109,8 @@ def main(args):
             saver.restore(inf_sess, model_path)
 
             create_save_model(args.model_dir, inf_g, inf_sess)
+
+create_coreml_model(args.model_dir)
 
 
 def parse_arguments(argv):
