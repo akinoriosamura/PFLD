@@ -93,6 +93,8 @@ class DataLoader():
             
         self.images = np.array(list(map(_parse_data, self.file_list)))
         self.images_shape = list(self.images.shape)
+        #o_images = self.images
+        #o_landmarks = self.landmarks
         if self.phase == "train" and self.args.is_augment:
             print("======= augment =========")
             tfrecord_path = "./data/augment_" + self.phase + ".tfrecords"
@@ -102,6 +104,10 @@ class DataLoader():
         else:
             print("======= not augment =========")
             tfrecord_path = "./data/unaugment_" + self.phase + ".tfrecords"
+        #import pdb;pdb.set_trace()
+        #save_anno(o_images[0], o_landmarks[0]*256, "ori")
+        #save_anno(self.images[0], (self.landmarks[0]*256), "aug")
+
         self.images = np.array(list(map(_normalize, self.images)))
         self.write_tfrecord(tfrecord_path)
         print("save in record dataset : ", tfrecord_path)
@@ -112,6 +118,14 @@ class DataLoader():
 
         return dataset
 
+
+def save_anno(img, lands, type):
+    lands = lands.astype(np.int32)
+    for id in range(int(len(lands) / 2), 2):
+        x = lands[id]
+        y = lands[id+1]
+        cv2.circle(img, (x, y), 1, (0, 0, 255))
+    cv2.imwrite("./img_" + type + ".jpg", img)
 
 if __name__ == '__main__':
     file_list = 'data/train_data/list.txt'

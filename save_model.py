@@ -61,7 +61,6 @@ def create_coreml_model(model_dir, args):
     tf_converter.convert(tf_model_path=os.path.join(model_dir, "original_98_frozen.pb"),
                         mlmodel_path=os.path.join(model_dir, 'pfld.mlmodel'),
                         input_name_shape_dict={'image_batch:0':[1,args.image_size,args.image_size,3]},
-                        image_input_names=['image_batch:0'],
                         output_feature_names=['pfld_inference/fc/BiasAdd:0']
                         )
 
