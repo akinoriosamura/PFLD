@@ -193,7 +193,7 @@ class ImageDate():
         self.imgs.append(imgT)
         self.landmarks.append(landmark)
 
-        if rotate=="rotate":
+        if rotate=="rotate" and is_train::
             # =========データ拡張=========
             while len(self.imgs) < repeat:
                 angle = np.random.randint(-20, 20)
