@@ -99,8 +99,8 @@ def main(args):
             print("quantize by: ", args.num_quant)
             tf.contrib.quantize.experimental_create_training_graph(
                 input_graph=g,
-                weight_bits=16,
-                activation_bits=16,
+                weight_bits=args.num_quant,
+                activation_bits=args.num_quant,
                 symmetric=False,
                 quant_delay=0,
                 freeze_bn_delay=None,

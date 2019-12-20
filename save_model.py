@@ -20,6 +20,10 @@ import sys
 
 
 def create_save_model(model_dir, graph, sess):
+    # check data type
+    for i in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES):
+        print i   # i.name if you want just a name
+    print("finish check")
     # save graphdef file to pb
     print("Save frozen graph")
     graphdef_n = "original_98_frozen.pb"
@@ -61,7 +65,8 @@ def create_coreml_model(model_dir, args):
     tf_converter.convert(tf_model_path=os.path.join(model_dir, "original_98_frozen.pb"),
                         mlmodel_path=os.path.join(model_dir, 'pfld.mlmodel'),
                         input_name_shape_dict={'image_batch:0':[1,args.image_size,args.image_size,3]},
-                        output_feature_names=['pfld_inference/fc/BiasAdd:0']
+                        output_feature_names=['pfld_inference/fc/BiasAdd:0'],
+                        add_custom_layers=True
                         )
 
 
@@ -83,8 +88,8 @@ def main(args):
             print("quantize by: ", args.num_quant)
             tf.contrib.quantize.experimental_create_eval_graph(
                 input_graph=inf_g,
-                weight_bits=16,
-                activation_bits=16,
+                weight_bits=args.num_quant,
+                activation_bits=args.num_quant,
                 symmetric=False,
                 quant_delay=None,
                 scope=None

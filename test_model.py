@@ -44,8 +44,8 @@ def main(args):
             print("quantize by: ", args.num_quant)
             tf.contrib.quantize.experimental_create_eval_graph(
                 input_graph=inf_g,
-                weight_bits=16,
-                activation_bits=16,
+                weight_bits=args.num_quant,
+                activation_bits=args.num_quant,
                 symmetric=False,
                 quant_delay=None,
                 scope=None
