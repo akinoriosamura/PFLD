@@ -1,15 +1,16 @@
 #!/bin/bash
 phase=$1
 num_labels=68
-depth_multi=0.25 # default = 1, like model complicated
+depth_multi=1 # default = 1, like model complicated
 num_quant=64
-save_model=models2/save_models/68/dm025_growing_preWFLW_68
-file_list=data/train_WFLW_68_data/list.txt
-test_list=data/test_WFLW_68_data/list.txt
-pre_model=models2/save_models/68/dm025_WFLW_68
+save_model=models2/save_models/68/im86_PFLE_WFLW68
+file_list=data/non_rotated_train_WFLW_68_im_86_data/list.txt
+test_list=data/non_rotated_test_WFLW_68_im_86_data/list.txt
+pre_model=models2/save_models/68/wide_PFLE_WFLW68
 out_dir=sample_result
 lr=0.0001
 is_augment=False  # True or False
+image_size=86
 
 # --pretrained_model=${pre_model} \
 # CUDA_VISIBLE_DEVICES='' \
@@ -26,7 +27,7 @@ if [ ${phase} = "pretrain" ]; then
                                 --learning_rate=${lr} \
                                 --level=L1 \
                                 --debug=False \
-                                --image_size=112 \
+                                --image_size=${image_size} \
                                 --batch_size=128 \
                                 --depth_multi=${depth_multi} \
                                 --num_quant=${num_quant} \
@@ -40,7 +41,7 @@ elif [ ${phase} = "train" ]; then
                                 --learning_rate=${lr} \
                                 --level=L1 \
                                 --debug=False \
-                                --image_size=112 \
+                                --image_size=${image_size} \
                                 --batch_size=128 \
                                 --depth_multi=${depth_multi} \
                                 --num_quant=${num_quant} \
@@ -52,7 +53,7 @@ elif [ ${phase} = "save" ]; then
                             --num_labels=${num_labels} \
                             --learning_rate=${lr} \
                             --level=L1 \
-                            --image_size=112 \
+                            --image_size=${image_size} \
                             --batch_size=128 \
                             --depth_multi=${depth_multi} \
                             --num_quant=${num_quant} \
@@ -65,7 +66,7 @@ elif [ "${phase}" = 'test' ]; then
                             --num_labels=${num_labels} \
                             --learning_rate=${lr} \
                             --level=L1 \
-                            --image_size=112 \
+                            --image_size=${image_size} \
                             --batch_size=128 \
                             --depth_multi=${depth_multi} \
                             --out_dir=${out_dir} \
