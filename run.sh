@@ -2,15 +2,15 @@
 phase=$1
 num_labels=68
 depth_multi=1 # default = 1, like model complicated
-num_quant=64
-save_model=models2/save_models/68/im86_PFLE_WFLW68
-file_list=data/non_rotated_train_WFLW_68_im_86_data/list.txt
-test_list=data/non_rotated_test_WFLW_68_im_86_data/list.txt
-pre_model=models2/save_models/68/wide_PFLE_WFLW68
-out_dir=sample_result
+num_quant=8
+save_model=models2/save_models/aware_qint8_growing_preWFLW/
+file_list=data/rotated_train_growing_data/list.txt
+test_list=data/rotated_test_growing_data/list.txt
+pre_model=models2/save_models/aware_qint8_WFLW/
+out_dir=sample_im
 lr=0.0001
 is_augment=False  # True or False
-image_size=86
+image_size=112
 
 # --pretrained_model=${pre_model} \
 # CUDA_VISIBLE_DEVICES='' \
@@ -48,8 +48,9 @@ elif [ ${phase} = "train" ]; then
                                 --is_augment=${is_augment}
 elif [ ${phase} = "save" ]; then
     echo "run save"
-    python -u save_model.py --model_dir=${save_model} \
+    python -u save_model.py --model_dir=${pre_model} \
                             --pretrained_model=${pre_model} \
+                            --test_list=${test_list} \
                             --num_labels=${num_labels} \
                             --learning_rate=${lr} \
                             --level=L1 \

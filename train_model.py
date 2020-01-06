@@ -96,7 +96,9 @@ def main(args):
 
         # quantize
         if args.num_quant < 64:
+            print("=====================================")
             print("quantize by: ", args.num_quant)
+            """
             tf.contrib.quantize.experimental_create_training_graph(
                 input_graph=g,
                 weight_bits=args.num_quant,
@@ -106,6 +108,9 @@ def main(args):
                 freeze_bn_delay=None,
                 scope=None
             )
+            """
+            tf.contrib.quantize.create_training_graph(input_graph=g,
+                                            quant_delay=2000000)  # about in WFLW 6 epoch
         else:
             print("no quantize, so float: ", args.num_quant)
 
@@ -170,10 +175,10 @@ def main(args):
                 # epoch 5の倍数の時のみdata shuffle and augment 作成
                 if (epoch % 5 == 0) or ("train_next_element" not in list_ops):
                     print("============ get train data ===============")
-                    train_dataset = train_loader.gen_tfrecord()
+                    _, train_dataset = train_loader.gen_tfrecord()
                     num_train_file = train_loader.num_file
                     print("============ get test data ===============")
-                    test_dataset = test_loader.gen_tfrecord()
+                    _, test_dataset = test_loader.gen_tfrecord()
                     num_test_file = test_loader.num_file
 
                     batch_train_dataset = train_dataset.batch(args.batch_size).repeat()

@@ -2,7 +2,10 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
 from pfld import create_model
+from generate_data import DataLoader
+
 import time
 # import matplotlib.pyplot as plt
 import os
@@ -19,10 +22,10 @@ import sys
 # matplotlib.use('Agg')
 
 
-def create_save_model(model_dir, graph, sess):
+def create_save_model(args, model_dir, graph, sess):
     # check data type
     for i in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES):
-        print i   # i.name if you want just a name
+        print(i)   # i.name if you want just a name
     print("finish check")
     # save graphdef file to pb
     print("Save frozen graph")
@@ -52,12 +55,38 @@ def create_save_model(model_dir, graph, sess):
     print("finish save saved_model")
 
     # save tflite model
+    # https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/g3doc/performance/post_training_quantization.md
+    # ref: https://github.com/seeouy/edgetpu_model_converter/blob/master/keras_to_edgetpu_model_converter.ipynb
+    # https://www.gitmemory.com/issue/tensorflow/tensorflow/27880/513844787
+    # https://www.tdi.co.jp/miso/tensorflow-tfrecord-02-datasetapi#TFRecordDataset_API
+
     converter = tf.lite.TFLiteConverter.from_saved_model(save_model_dir)
-    # converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
+
+    # for aware int8 training
+    converter.inference_type = tf.uint8
+    input_arrays = converter.get_input_arrays()
+    converter.quantized_input_stats = {input_arrays[0]: (0, 255)}  # mean, std_dev
+    # relu6; x→min(max(0,x),6).
+    converter.default_ranges_stats = (0,6)
+    """
+    # for post int8 quantization
+    def representative_dataset_gen():
+        test_loader = DataLoader(args.test_list, args, "test")
+        test_images, _ = test_loader.gen_tfrecord()
+        for i in range(200):
+            yield [test_images[i: i + 1]]
+    converter.representative_dataset = representative_dataset_gen
+    converter.target_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    converter.inference_input_type = tf.uint8
+    converter.inference_output_type = tf.uint8
+    converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_LATENCY]
+    """
     tflite_model = converter.convert()
 
-    with open(os.path.join(model_dir, "pfld.tflite"), 'wb') as f:
+    with open(os.path.join(model_dir, "pfld_aware_qint8_growing.tflite"), 'wb') as f:
         f.write(tflite_model)
+
+    print("finish save tflite")
 
 
 def create_coreml_model(model_dir, args):
@@ -85,7 +114,9 @@ def main(args):
         saver = tf.train.Saver(save_params, max_to_keep=None)
         # quantize
         if args.num_quant < 64:
+            print("=====================================")
             print("quantize by: ", args.num_quant)
+            """
             tf.contrib.quantize.experimental_create_eval_graph(
                 input_graph=inf_g,
                 weight_bits=args.num_quant,
@@ -94,6 +125,9 @@ def main(args):
                 quant_delay=None,
                 scope=None
             )
+            """
+            # ref: https://github.com/tensorflow/tensorflow/tree/r1.14/tensorflow/contrib/quantize
+            tf.contrib.quantize.create_eval_graph(input_graph=inf_g)
         else:
             print("no quantize, so float: ", args.num_quant)
 
@@ -118,7 +152,7 @@ def main(args):
             print('Checkpoint file: {}'.format(model_path))
             saver.restore(inf_sess, model_path)
 
-            create_save_model(args.model_dir, inf_g, inf_sess)
+            create_save_model(args, args.model_dir, inf_g, inf_sess)
 
     create_coreml_model(args.model_dir, args)
 
@@ -134,6 +168,7 @@ def parse_arguments(argv):
 
     parser = argparse.ArgumentParser()
 
+    parser.add_argument('--test_list', type=str, default='data/test_data/list.txt')
     parser.add_argument('--seed', type=int, default=666)
     parser.add_argument('--max_epoch', type=int, default=1000)
     parser.add_argument('--image_size', type=int, default=112)

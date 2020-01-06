@@ -117,6 +117,8 @@ def pfld_backbone(input, weight_decay, batch_norm_params, num_labels, depth_mult
             # 7*7*32 / conv7*7 / c:128,n:1,s:1
             num_channel = depth(128*coefficient)
             conv8 = slim.conv2d(conv7, num_channel, [7, 7], stride=1, padding='VALID', scope='conv8')
+            # for img size58
+            # conv8 = slim.conv2d(conv7, num_channel, [3, 3], stride=1, padding='VALID', scope='conv8')
             print(conv8.name, conv8.get_shape())
             avg_pool1 = slim.avg_pool2d(conv6, [conv6.get_shape()[1], conv6.get_shape()[2]], stride=1)
             print(avg_pool1.name, avg_pool1.get_shape())
@@ -130,6 +132,8 @@ def pfld_backbone(input, weight_decay, batch_norm_params, num_labels, depth_mult
             s3 = slim.flatten(conv8)
             multi_scale = tf.concat([s1, s2, s3], 1)
             landmarks = slim.fully_connected(multi_scale, num_outputs=num_labels*2, activation_fn=None, scope='fc')
+            print("last layer name")
+            print(landmarks.name, landmarks.get_shape())
             return features, landmarks
 
 

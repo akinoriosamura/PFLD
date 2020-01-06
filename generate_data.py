@@ -116,7 +116,7 @@ class DataLoader():
         dataset = dataset.map(self.parse_function)
         dataset = dataset.shuffle(buffer_size=10000)
 
-        return dataset
+        return self.images, dataset
 
 
 def save_anno(img, lands, type):
