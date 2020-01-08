@@ -14,7 +14,6 @@ def extract_annotations(json_dict):
     error_files = []
     correct_img_num = 0
     error_num = 0
-    import pdb;pdb.set_trace()
     for img_file, label in json_dict.items():
         try:
             annotation = []
@@ -23,11 +22,11 @@ def extract_annotations(json_dict):
             # bb
             # {'top': '49', 'left': '49', 'width': '193', 'height': '194'}
             box = label["bb"]
-            bbox = [box["top"], box["left"], box["width"], box["height"]]
+            bbox = [int(box["top"]), int(box["left"]), int(box["width"]), int(box["height"])]
             bbox = list(map(str, bbox))
             for _, lands in label["landmark"].items():
                 # , {'x': '93', 'y': '180'}
-                landmark = [lands['x'], lands['y']]
+                landmark = [int(lands['x']), int(lands['y'])]
                 landmark = list(map(str, landmark))
                 annotation.extend(landmark)
             # print("length landmark")
@@ -105,7 +104,6 @@ if __name__ == '__main__':
         print("error: please write json_f path and img dir")
         exit()
 
-    import pdb;pdb.set_trace()
     with open(json_f) as f:
         json_dict = json.load(f)
         annotations = extract_annotations(json_dict)
@@ -122,7 +120,6 @@ if __name__ == '__main__':
                 box = [box[1], box[0], box[1] + box[2], box[0] + box[3]]
                 return box
             bbox = np.asarray(list(map(sort_box, bbox)))
-            import pdb; pdb.set_trace()
             attribs = list(map(int, anno[140:146]))
             img_path = os.path.join(img_dir, anno[146])
             img = cv2.imread(img_path)
@@ -138,14 +135,14 @@ if __name__ == '__main__':
     train_annos, test_annos = train_test_split(annotations, test_size=0.1)
 
     # save train text
-    save_path = json_f[:-4] + "_train.txt"
+    save_path = json_f[:-5] + "_train.txt"
     with open(save_path, mode='w') as f:
         for idx, anno in enumerate(train_annos):
             str_anno = " ".join(anno) + "\n"
             f.write(str_anno)
 
     # save test text
-    save_path = json_f[:-4] + "_test.txt"
+    save_path = json_f[:-5] + "_test.txt"
     with open(save_path, mode='w') as f:
         for idx, anno in enumerate(test_annos):
             str_anno = " ".join(anno) + "\n"
