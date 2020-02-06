@@ -19,6 +19,9 @@ import sys
 import os
 
 
+DEBUG = False
+
+
 def main(args):
     print("args: ", args)
     if not os.path.exists(args.out_dir):
@@ -26,6 +29,12 @@ def main(args):
     else:
         shutil.rmtree(args.out_dir)
         os.mkdir(args.out_dir)
+
+
+    loss_sum = 0
+    NRMSE = 0
+    landmark_error = 0
+    landmark_01_num = 0
 
     with tf.Graph().as_default() as inf_g:
         image_batch = tf.placeholder(tf.float32, shape=(None, args.image_size, args.image_size, 3),
@@ -41,7 +50,9 @@ def main(args):
         saver = tf.train.Saver(save_params, max_to_keep=None)
         # quantize
         if args.num_quant < 64:
+            print("=====================================")
             print("quantize by: ", args.num_quant)
+            """
             tf.contrib.quantize.experimental_create_eval_graph(
                 input_graph=inf_g,
                 weight_bits=args.num_quant,
@@ -50,6 +61,9 @@ def main(args):
                 quant_delay=None,
                 scope=None
             )
+            """
+            # ref: https://github.com/tensorflow/tensorflow/tree/r1.14/tensorflow/contrib/quantize
+            tf.contrib.quantize.create_eval_graph(input_graph=inf_g)
         else:
             print("no quantize, so float: ", args.num_quant)
 
@@ -75,10 +89,10 @@ def main(args):
             saver.restore(inf_sess, model_path)
 
             dataloader = DataLoader(args.test_list, args, "test")
-            file_list, train_landmarks, train_attributes, euler_angles = dataloader.gen_data(
+            file_list, landmarks, attributes, euler_angles = dataloader.gen_data(
                 args.test_list, args.num_labels)
             print(file_list)
-            for file in file_list:
+            for file_id, file in enumerate(file_list):
                 filename = os.path.split(file)[-1]
                 image = cv2.imread(file)
                 # image = cv2.resize(image, (image_size, image_size))
@@ -96,13 +110,88 @@ def main(args):
                 # print(pre_landmarks)
                 print("elaps: ", time.time() - st)
                 pre_landmark = pre_landmarks[0]
-
+                # save labeled image
                 h, w, _ = image.shape
-                pre_landmark = pre_landmark.reshape(-1, 2) * [h, w]
-                for (x, y) in pre_landmark.astype(np.int32):
-                    cv2.circle(image, (x, y), 1, (0, 0, 255))
-                print(os.path.join(args.out_dir, filename))
-                cv2.imwrite(os.path.join(args.out_dir, filename), image)
+                if DEBUG:
+                    img = image.copy()
+                    annotate_pre_landmark = pre_landmark.reshape(-1, 2) * [h, w]
+                    for land_id, (x, y) in enumerate(annotate_pre_landmark.astype(np.int32)):
+                        cv2.circle(img, (x, y), 1, (0, 255, 0), 1)
+                        cv2.imwrite("./show_labeled" + str(land_id) + ".jpg", img)
+                    img = image.copy()
+                    annotate_landmark = landmarks[file_id].reshape(-1, 2) * [h, w]
+                    for land_id, (x, y) in enumerate(annotate_landmark.astype(np.int32)):
+                        cv2.circle(img, (x, y), 1, (0, 255, 0), 1)
+                        cv2.imwrite("./show_test" + str(land_id) + ".jpg", img)
+                    break
+                    print(os.path.join(args.out_dir, filename))
+                    cv2.imwrite(os.path.join(args.out_dir, filename), image)
+                else:
+                    annotate_pre_landmark = pre_landmark.reshape(-1, 2) * [h, w]
+                    for (x, y) in annotate_pre_landmark.astype(np.int32):
+                        cv2.circle(image, (x, y), 1, (0, 255, 0), 1)
+                    print(os.path.join(args.out_dir, filename))
+                    cv2.imwrite(os.path.join(args.out_dir, filename), image)
+
+
+                # cal loss
+                # import pdb;pdb.set_trace()
+                landmark = landmarks[file_id]
+                diff = pre_landmark - landmark
+                loss = np.sum(diff * diff)
+                loss_sum += loss
+
+                # RMSE
+                RMSE = np.sqrt(np.mean((landmark-pre_landmark)**2))
+                print("RMSE: ", RMSE)
+                NRMSE += RMSE
+
+                error_all_points = 0
+                for count_point in range(pre_landmark.shape[0] // 2):  # num points
+                    error_diff = pre_landmark[(count_point * 2):(count_point * 2 + 2)] - \
+                        landmark[(count_point * 2):(count_point * 2 + 2)]
+                    error = np.sqrt(np.sum(error_diff * error_diff))
+                    error_all_points += error
+                # 目の両端
+                if args.num_labels == 98:
+                    left_eye_edge = 60
+                    right_eye_edge = 72
+                elif args.num_labels == 68:
+                    left_eye_edge = 36
+                    right_eye_edge = 45
+                else:
+                    print("eye error")
+                    exit()
+                # print("eye: ", left_eye_edge)
+                # print("eye; ", right_eye_edge)
+                # print("labels: ", args.num_labels)
+                time.sleep(2)
+                """
+                interocular_distance = np.sqrt(
+                    np.sum(
+                        pow((landmark[left_eye_edge*2:left_eye_edge*2+2] - landmark[right_eye_edge*2:right_eye_edge*2+2]), 2)
+                        )
+                    )
+                error_norm = error_all_points / (interocular_distance * args.num_labels)
+                """
+                error_norm = error_all_points
+                print("error_norm: ", error_norm)
+                landmark_error += error_norm
+                if error_norm >= 0.5:
+                    landmark_01_num += 1
+
+            loss = loss_sum / (len(file_list) * 1.0)
+            print('Test Loss {:2.3f}'.format(loss))
+            NRMSE = NRMSE / (len(file_list) * 1.0)
+            print('Test NRMSE {:2.3f}'.format(NRMSE))
+
+            print('mean error and failure rate')
+            landmark_error_norm = landmark_error / (len(file_list) * 1.0)
+            error_str = 'mean error : {:2.3f}'.format(landmark_error_norm)
+
+            failure_rate_norm = landmark_01_num / (len(file_list) * 1.0)
+            failure_rate_str = 'failure rate: L1 {:2.3f}'.format(failure_rate_norm)
+            print(error_str + '\n' + failure_rate_str + '\n')
 
 def parse_arguments(argv):
     def str2bool(v):

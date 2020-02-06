@@ -271,8 +271,7 @@ def get_dataset_list(imgDir, outDir, landmarkDir, is_train, rotate, num_labels, 
         lines = f.readlines()
         labels = []
         save_img = os.path.join(outDir, 'imgs')
-        if not os.path.exists(save_img):
-            os.mkdir(save_img)
+        os.makedirs(save_img, exist_ok=True)
 
         if debug:
             lines = lines[:100]

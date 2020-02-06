@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from utils import train_model
-from pfld import create_model
+from pfld_new import create_model
 from generate_data import DataLoader
 from data_augmentor import DataAugmentator
 import time
@@ -92,7 +92,7 @@ def main(args):
         L2_loss = tf.add_n(tf.losses.get_regularization_losses())
         _sum_k = tf.reduce_sum(tf.map_fn(lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
         loss_sum = tf.reduce_sum(tf.square(landmark_batch - landmarks_pre), axis=1)
-        loss_sum = tf.reduce_mean(loss_sum * _sum_k)#  * attributes_w_n)
+        loss_sum = tf.reduce_mean(loss_sum * _sum_k * attributes_w_n)
         loss_sum += L2_loss
 
         # quantize
@@ -433,7 +433,7 @@ def parse_arguments(argv):
     parser.add_argument('--model_dir', type=str, default='models1/model_test')
     parser.add_argument('--learning_rate', type=float, default=0.001)
     parser.add_argument('--lr_epoch', type=str, default='10,20,30,40,200,500')
-    parser.add_argument('--weight_decay', type=float, default=5e-5)
+    parser.add_argument('--weight_decay', type=float, default=10e-6)
     parser.add_argument('--level', type=str, default='L5')
     parser.add_argument('--save_image_example', action='store_false')
     parser.add_argument('--debug', type=str, default='False')

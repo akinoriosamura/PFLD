@@ -9,9 +9,8 @@ from utils import LandmarkImage, LandmarkImage_98
 import time
 
 
-def conv2d(net, stride, channel, kernel, depth, scope):
-    num_channel = depth(channel)
-    net = slim.conv2d(net, num_channel, [kernel, kernel], stride=stride, scope=scope)
+def conv2d(net, stride, channel, kernel, scope):
+    net = slim.conv2d(net, channel, [kernel, kernel], stride=stride, scope=scope)
 
     print(net.name, net.get_shape())
 
@@ -65,9 +64,8 @@ def invertedbottleneck(net, stride, up_sample, channel, depth, scope):
     return net
 
 
-def pfld_backbone(input, weight_decay, batch_norm_params, num_labels, depth_multi, min_depth=8):
+def pfld_backbone(input, weight_decay, batch_norm_params, num_labels, depth_multi, min_depth=1):
 
-    coefficient = 1
     print("labels; ", num_labels)
     time.sleep(3)
 
@@ -89,7 +87,7 @@ def pfld_backbone(input, weight_decay, batch_norm_params, num_labels, depth_mult
             ):
             print('PFLD input shape({}): {}'.format(input.name, input.get_shape()))
             # 112*112*3 / conv3*3 / c:64,n:1,s:2
-            conv1 = conv2d(input, stride=2, channel=64*coefficient, kernel=3, depth=depth, scope='conv1')
+            conv1 = conv2d(input, stride=2, channel=64, kernel=3, scope='conv1')
             # 56*56*64 / depthwiseconv3*3 / c:64,n:1,s:1
             num_channel = depth(64)
             conv2 = slim.separable_conv2d(conv1, num_channel, [3, 3], depth_multiplier=1, stride=1, scope='conv2/dwise')
@@ -113,12 +111,11 @@ def pfld_backbone(input, weight_decay, batch_norm_params, num_labels, depth_mult
             # 14*14*128 / InverseBottleneck / up_s:2,c:16,n:1,s:1
             conv6 = invertedbottleneck(conv5_6, stride=1, up_sample=2, channel=16, depth=depth, scope='conv6/inbottleneck')
             # 14*14*16 / conv3*3 / c:32,n:1,s:2
-            conv7 = conv2d(conv6, stride=2, channel=32*coefficient, kernel=3, depth=depth, scope='conv7')
+            conv7 = conv2d(conv6, stride=2, channel=32, kernel=3, scope='conv7')
             # 7*7*32 / conv7*7 / c:128,n:1,s:1
-            num_channel = depth(128*coefficient)
-            conv8 = slim.conv2d(conv7, num_channel, [7, 7], stride=1, padding='VALID', scope='conv8')
-            # for img size84
-            # conv8 = slim.conv2d(conv7, num_channel, [5, 5], stride=1, padding='VALID', scope='conv8')
+            conv8 = slim.conv2d(conv7, 128, [7, 7], stride=1, padding='VALID', scope='conv8')
+            # for img size56
+            # conv8 = slim.conv2d(conv7, num_channel, [3, 3], stride=1, padding='VALID', scope='conv8')
             print(conv8.name, conv8.get_shape())
             avg_pool1 = slim.avg_pool2d(conv6, [conv6.get_shape()[1], conv6.get_shape()[2]], stride=1)
             print(avg_pool1.name, avg_pool1.get_shape())

@@ -24,8 +24,10 @@ def extract_annotations(json_dict):
             box = label["bb"]
             bbox = [int(box["top"]), int(box["left"]), int(box["width"]), int(box["height"])]
             bbox = list(map(str, bbox))
-            for _, lands in label["landmark"].items():
+            for land_id in range(len(label["landmark"].values())):
+            # for _, lands in label["landmark"].items():
                 # , {'x': '93', 'y': '180'}
+                lands = label["landmark"][str(land_id)]
                 landmark = [int(lands['x']), int(lands['y'])]
                 landmark = list(map(str, landmark))
                 annotation.extend(landmark)
@@ -96,7 +98,7 @@ if __name__ == '__main__':
             #146: image path
     """
     # get labels
-    DEBUG = False
+    DEBUG = True
     if len(sys.argv) == 3:
         json_f = sys.argv[1]
         img_dir = sys.argv[2]
@@ -109,30 +111,30 @@ if __name__ == '__main__':
         annotations = extract_annotations(json_dict)
 
     if DEBUG:
-        annotations = annotations[:10]
-        for anno in annotations:
-            landmarks = np.asarray(list(map(float, anno[:136])), dtype=np.float32).reshape(-1, 2)
-            bbox = np.asarray(list(map(int, anno[136:140])), dtype=np.int32)
+        anno = annotations[0]
+        landmarks = np.asarray(list(map(float, anno[:136])), dtype=np.float32).reshape(-1, 2)
+        bbox = np.asarray((anno[136:140]), dtype=np.int32)
 
-            def sort_box(box):
-                # WFLW bbox: x_min_rect y_min_rect x_max_rect y_max_rect
-                # growing: top="49" left="49" width="193" height="194"
-                box = [box[1], box[0], box[1] + box[2], box[0] + box[3]]
-                return box
-            bbox = np.asarray(list(map(sort_box, bbox)))
-            attribs = list(map(int, anno[140:146]))
-            img_path = os.path.join(img_dir, anno[146])
-            img = cv2.imread(img_path)
-            cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[0] + bbox[2], bbox[1] + bbox[3]), (255, 0, 0), 1, 1)
-            for x, y in landmarks:
-                cv2.circle(img, (x, y), 3, (0, 0, 255))
+        def sort_box(_bbox):
+            # WFLW bbox: x_min_rect y_min_rect x_max_rect y_max_rect
+            # growing: top="49" left="49" width="193" height="194"
+            _bbox = [_bbox[1], _bbox[0], _bbox[1] + _bbox[2], _bbox[0] + _bbox[3]]
+            return _bbox
+        # bbox = np.asarray(list(map(sort_box, bbox)))
+        attribs = list(map(int, anno[140:146]))
+        img_path = os.path.join(img_dir, anno[146])
+        img = cv2.imread(img_path)
+        # cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[0] + bbox[2], bbox[1] + bbox[3]), (255, 0, 0), 1, 1)
 
-            cv2.imshow("", img)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
+        id = 1
+        for x, y in landmarks:
+            cv2.circle(img, (x, y), 3, (0, 255, 0))
+            cv2.imwrite("./show_labeled" + str(id) + ".jpg", img)
+            id += 1
 
     annotations = np.array(annotations)
-    train_annos, test_annos = train_test_split(annotations, test_size=0.1)
+
+    train_annos, test_annos = train_test_split(annotations, test_size=0.01)
 
     # save train text
     save_path = json_f[:-5] + "_train.txt"
@@ -147,5 +149,12 @@ if __name__ == '__main__':
         for idx, anno in enumerate(test_annos):
             str_anno = " ".join(anno) + "\n"
             f.write(str_anno)
-
+    """
+    # save all text
+    save_path = json_f[:-5] + ".txt"
+    with open(save_path, mode='w') as f:
+        for idx, anno in enumerate(annotations):
+            str_anno = " ".join(anno) + "\n"
+            f.write(str_anno)
     print("finish save text labels")
+    """

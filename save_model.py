@@ -61,29 +61,9 @@ def create_save_model(args, model_dir, graph, sess):
     # https://www.tdi.co.jp/miso/tensorflow-tfrecord-02-datasetapi#TFRecordDataset_API
 
     converter = tf.lite.TFLiteConverter.from_saved_model(save_model_dir)
-
-    # for aware int8 training
-    converter.inference_type = tf.uint8
-    input_arrays = converter.get_input_arrays()
-    converter.quantized_input_stats = {input_arrays[0]: (0, 255)}  # mean, std_dev
-    # relu6; x→min(max(0,x),6).
-    converter.default_ranges_stats = (0,6)
-    """
-    # for post int8 quantization
-    def representative_dataset_gen():
-        test_loader = DataLoader(args.test_list, args, "test")
-        test_images, _ = test_loader.gen_tfrecord()
-        for i in range(200):
-            yield [test_images[i: i + 1]]
-    converter.representative_dataset = representative_dataset_gen
-    converter.target_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-    converter.inference_input_type = tf.uint8
-    converter.inference_output_type = tf.uint8
-    converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_LATENCY]
-    """
     tflite_model = converter.convert()
 
-    with open(os.path.join(model_dir, "pfld_aware_qint8_growing.tflite"), 'wb') as f:
+    with open(os.path.join(model_dir, "pfld.tflite"), 'wb') as f:
         f.write(tflite_model)
 
     print("finish save tflite")
