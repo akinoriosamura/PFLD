@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from pfld import create_model
+from pfld_new import create_model
 from generate_data import DataLoader
 
 
@@ -152,28 +152,27 @@ def main(args):
                         landmark[(count_point * 2):(count_point * 2 + 2)]
                     error = np.sqrt(np.sum(error_diff * error_diff))
                     error_all_points += error
-                # 目の両端
-                if args.num_labels == 98:
-                    left_eye_edge = 60
-                    right_eye_edge = 72
-                elif args.num_labels == 68:
-                    left_eye_edge = 36
-                    right_eye_edge = 45
-                else:
-                    print("eye error")
-                    exit()
-                # print("eye: ", left_eye_edge)
-                # print("eye; ", right_eye_edge)
-                # print("labels: ", args.num_labels)
-                time.sleep(2)
-                """
-                interocular_distance = np.sqrt(
-                    np.sum(
-                        pow((landmark[left_eye_edge*2:left_eye_edge*2+2] - landmark[right_eye_edge*2:right_eye_edge*2+2]), 2)
+                # 顔輪郭点の場合
+                if (args.num_labels == 68) or (args.num_labels == 98):
+                    # 目の両端
+                    if args.num_labels == 98:
+                        left_eye_edge = 60
+                        right_eye_edge = 72
+                    elif args.num_labels == 68:
+                        left_eye_edge = 36
+                        right_eye_edge = 45
+                    # print("eye: ", left_eye_edge)
+                    # print("eye; ", right_eye_edge)
+                    # print("labels: ", args.num_labels)
+                    time.sleep(2)
+                    """
+                    interocular_distance = np.sqrt(
+                        np.sum(
+                            pow((landmark[left_eye_edge*2:left_eye_edge*2+2] - landmark[right_eye_edge*2:right_eye_edge*2+2]), 2)
+                            )
                         )
-                    )
-                error_norm = error_all_points / (interocular_distance * args.num_labels)
-                """
+                    error_norm = error_all_points / (interocular_distance * args.num_labels)
+                    """
                 error_norm = error_all_points
                 print("error_norm: ", error_norm)
                 landmark_error += error_norm

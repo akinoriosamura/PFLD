@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from pfld import create_model
+from pfld_new import create_model
 from generate_data import DataLoader
 
 import time

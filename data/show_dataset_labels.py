@@ -35,9 +35,11 @@ if __name__ == "__main__":
 
     line = lines[2].strip().split()
     img_path = line[0]
-    landmarks = np.asarray(list(map(float, line[1:137])), dtype=np.float32)
+    # for lip 20 points
+    landmarks = np.asarray(list(map(float, line[1:41])), dtype=np.float32)
+    # for 68points
+    # landmarks = np.asarray(list(map(float, line[1:137])), dtype=np.float32)
     landmarks = landmarks.reshape(-1, 2)
-    import pdb;pdb.set_trace()
     img = cv2.imread(img_path)
     h, w, _ = img.shape
     landmarks = np.asarray(landmarks * [h, w], np.int32)

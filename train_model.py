@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from utils import train_model
-from pfld import create_model
+from pfld_new import create_model
 from generate_data import DataLoader
 from data_augmentor import DataAugmentator
 import time
@@ -222,7 +222,7 @@ def main(args):
                     saver.export_meta_graph(metagraph_path)
                 print("save checkpoint: {}".format(checkpoint_path))
 
-                if epoch % 10 == 0 and epoch != 0:
+                if epoch % 20 == 0 and epoch != 0:
                     print("test start")
                     start = time.time()
                     test_ME, test_FR, test_loss = test(sess, list_ops, args)
@@ -316,26 +316,27 @@ def test(sess, list_ops, args):
                     landmarks[k][(count_point * 2):(count_point * 2 + 2)]
                 error = np.sqrt(np.sum(error_diff * error_diff))
                 error_all_points += error
-            # 目の両端
-            if args.num_labels == 98:
-                left_eye_edge = 60
-                right_eye_edge = 72
-            elif args.num_labels == 68:
-                left_eye_edge = 36
-                right_eye_edge = 45
-            else:
-                print("eye error")
-                exit()
-            # print("eye: ", left_eye_edge)
-            # print("eye; ", right_eye_edge)
-            # print("labels: ", args.num_labels)
-            time.sleep(3)
-            interocular_distance = np.sqrt(
-                np.sum(
-                    pow((landmarks[k][left_eye_edge*2:left_eye_edge*2+2] - landmarks[k][right_eye_edge*2:right_eye_edge*2+2]), 2)
+            # 顔輪郭点の場合
+            if (args.num_labels == 68) or (args.num_labels == 98):
+                # 目の両端
+                if args.num_labels == 98:
+                    left_eye_edge = 60
+                    right_eye_edge = 72
+                elif args.num_labels == 68:
+                    left_eye_edge = 36
+                    right_eye_edge = 45
+                # print("eye: ", left_eye_edge)
+                # print("eye; ", right_eye_edge)
+                # print("labels: ", args.num_labels)
+                time.sleep(3)
+                interocular_distance = np.sqrt(
+                    np.sum(
+                        pow((landmarks[k][left_eye_edge*2:left_eye_edge*2+2] - landmarks[k][right_eye_edge*2:right_eye_edge*2+2]), 2)
+                        )
                     )
-                )
-            error_norm = error_all_points / (interocular_distance * args.num_labels)
+                error_norm = error_all_points / (interocular_distance * args.num_labels)
+            else:
+                error_norm = error_all_points
             landmark_error += error_norm
             if error_norm >= 0.02:
                 landmark_01_num += 1

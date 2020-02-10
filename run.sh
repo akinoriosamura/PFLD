@@ -1,14 +1,14 @@
 #!/bin/bash
 phase=$1
-num_labels=68
+num_labels=20 # 68
 depth_multi=0.75 # default = 1, like model complicated
 num_quant=64
-save_model=models2/save_models/68/dm075_im84_WFLW_morucleanv2
-file_list=data/rotated_train_WFLW_morucleanedv2_data/list.txt
-test_list=data/rotated_test_WFLW_morucleanedv2_data/list.txt
+save_model=models2/save_models/lip/lip_cleandv2
+file_list=data/rotated_train_lip_moru_cleanedv2_data/list.txt
+test_list=data/rotated_test_lip_moru_cleanedv2_data/list.txt
 # test_list=data/test_moru_dataset/list.txt
-pre_model=models2/save_models/68/dm075_im84_WFLW_morucleanv2
-out_dir=sample_
+pre_model=models2/save_models/68/tmp
+out_dir=sample_new_dm075_im84_cleanedv2_pregrow
 lr=0.0001
 is_augment=False  # True or False
 image_size=84
