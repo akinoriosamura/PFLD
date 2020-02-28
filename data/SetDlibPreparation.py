@@ -29,7 +29,7 @@ def apply_rotate(angle, center, landmark):
 
 
 class ImageDate():
-    def __init__(self, line, imgDir, num_labels, image_size, dataset):
+    def __init__(self, line, num_labels, image_size, dataset):
         self.image_size = image_size
         line = line.strip().split()
         """
@@ -53,8 +53,6 @@ class ImageDate():
         #146: image path
         """
         if num_labels == 68:
-            if dataset == "WFLW":
-                line = self.remove_unuse_land(line)
             if len(line) != 147:
                 import pdb;pdb.set_trace()
             assert(len(line) == 147)
@@ -70,25 +68,7 @@ class ImageDate():
             self.make_up = flag[3]
             self.occlusion = flag[4]
             self.blur = flag[5]
-            self.path = os.path.join(imgDir, line[146])
-            self.img = None
-            self.num_labels = num_labels
-            self.debug_num = 0
-        elif num_labels == 98:
-            assert(len(line) == 207)
-            self.tracked_points = [33, 38, 50, 46, 60, 64, 68, 72, 55, 59, 76, 82, 85, 16]
-            self.list = line
-            self.landmark = np.asarray(list(map(float, line[:196])), dtype=np.float32).reshape(-1, 2)
-            self.box = np.asarray(list(map(int, line[196:200])), dtype=np.int32)
-            flag = list(map(int, line[200:206]))
-            flag = list(map(bool, flag))
-            self.pose = flag[0]
-            self.expression = flag[1]
-            self.illumination = flag[2]
-            self.make_up = flag[3]
-            self.occlusion = flag[4]
-            self.blur = flag[5]
-            self.path = os.path.join(imgDir, line[206])
+            self.path = line[146]
             self.img = None
             self.num_labels = num_labels
             self.debug_num = 0
@@ -271,7 +251,7 @@ class ImageDate():
         return labels
 
 
-def get_dataset_list(imgDir, outDir, landmarkDir, is_train, rotate, num_labels, image_size, dataset):
+def get_dataset_list(outDir, landmarkDir, is_train, rotate, num_labels, image_size, dataset):
     with open(landmarkDir, 'r') as f:
         lines = f.readlines()
         labels = []
@@ -282,7 +262,11 @@ def get_dataset_list(imgDir, outDir, landmarkDir, is_train, rotate, num_labels, 
             lines = lines[:100]
         print("get file num: ", len(lines))
         for i, line in enumerate(lines):
-            Img = ImageDate(line, imgDir, num_labels, image_size, dataset)
+            if len(line.strip().split()) != 147:
+                print("error num of line in :")
+                print(line)
+                continue
+            Img = ImageDate(line, num_labels, image_size, dataset)
             img_name = Img.path
             Img.load_data(is_train, rotate, 10, Mirror_file)
             _, filename = os.path.split(img_name)
@@ -338,7 +322,6 @@ if __name__ == '__main__':
     config.read('preparate_config.ini')
 
     section = dataset + "_" + num_labels
-    imageDirs = config.get(section, 'imageDirs')
     # 左右反転対象ラベル
     # なくてもいい
     Mirror_file = config.get(section, 'Mirror_file')
@@ -358,7 +341,6 @@ if __name__ == '__main__':
         outTrainDir = "non_rotated_" + outTrainDir
         outTestDir = "non_rotated_" + outTestDir
     image_size = int(config.get(section, 'ImageSize'))
-    print(imageDirs)
     print(Mirror_file)
     print(landmarkTrainDir)
     print(landmarkTestDir)
@@ -380,5 +362,5 @@ if __name__ == '__main__':
             is_train = False
         else:
             is_train = True
-        imgs = get_dataset_list(imageDirs, outDir, landmarkDir, is_train, rotate, int(num_labels), image_size, dataset)
+        imgs = get_dataset_list(outDir, landmarkDir, is_train, rotate, int(num_labels), image_size, dataset)
     print('end')

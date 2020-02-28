@@ -1,14 +1,14 @@
 #!/bin/bash
 phase=$1
-num_labels=20 # 68
+num_labels=68
 depth_multi=0.75 # default = 1, like model complicated
 num_quant=64
-save_model=models2/save_models/lip/lip_cleandv2
-file_list=data/rotated_train_lip_moru_cleanedv2_data/list.txt
-test_list=data/rotated_test_lip_moru_cleanedv2_data/list.txt
+save_model=models2/save_models/68/dm075_im84_osamura_1_precle2
+file_list=data/rotated_train_self_osamura1_data/list.txt
+test_list=data/rotated_test_self_osamura1_data/list.txt
 # test_list=data/test_moru_dataset/list.txt
-pre_model=models2/save_models/68/tmp
-out_dir=sample_new_dm075_im84_cleanedv2_pregrow
+pre_model=models2/save_models/68/dm075_im84_morucleanedv2_premorudata
+out_dir=sam_dm075_im84_morucleanedv2_premorudata
 lr=0.0001
 is_augment=False  # True or False
 image_size=84

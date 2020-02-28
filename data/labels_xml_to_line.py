@@ -16,6 +16,7 @@ def extract_annotations(labels_xml):
     for id, label_xml in enumerate(labels_xml):
         if label_xml.tag == 'images':
             images_id = id
+    image_num = 0
     for img_xml in labels_xml[images_id].iter('image'):
         img_file = img_xml.attrib["file"]
         # {'top': '49', 'left': '49', 'width': '193', 'height': '194'}
@@ -44,11 +45,13 @@ def extract_annotations(labels_xml):
                 assert len(annotation) == 147
 
                 annotations.append(annotation)
+                image_num += 1
             except Exception as e:
                 print("例外args:", e.args)
                 print(img_file)
                 error_files.append(img_file)
                 continue
+    print("total num: ", image_num)
 
     return annotations
 
@@ -57,6 +60,8 @@ if __name__ == '__main__':
     """
     Args:
         xml: xml path,
+            if file has <?xml version='1.0' encoding='ISO-8859-1'?>
+            remove encodeing above line
             <image file="image_071_1-0.jpg">
             <box top="49" left="49" width="193" height="194">
             <part name="00" x="59" y="109" />
@@ -117,7 +122,7 @@ if __name__ == '__main__':
             cv2.destroyAllWindows()
 
     annotations = np.array(annotations)
-    train_annos, test_annos = train_test_split(annotations, test_size=0.1)
+    train_annos, test_annos = train_test_split(annotations, test_size=0.01)
 
     # save train text
     save_path = xml[:-4] + "_train.txt"
