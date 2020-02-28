@@ -152,24 +152,27 @@ def main(args):
                         landmark[(count_point * 2):(count_point * 2 + 2)]
                     error = np.sqrt(np.sum(error_diff * error_diff))
                     error_all_points += error
-                # 顔輪郭点の場合
-                if (args.num_labels == 68) or (args.num_labels == 98):
-                    # 目の両端
-                    if args.num_labels == 98:
-                        left_eye_edge = 60
-                        right_eye_edge = 72
-                    elif args.num_labels == 68:
-                        left_eye_edge = 36
-                        right_eye_edge = 45
-                    # print("eye: ", left_eye_edge)
-                    # print("eye; ", right_eye_edge)
-                    # print("labels: ", args.num_labels)
-                    time.sleep(2)
-                    """
-                    interocular_distance = np.sqrt(
-                        np.sum(
-                            pow((landmark[left_eye_edge*2:left_eye_edge*2+2] - landmark[right_eye_edge*2:right_eye_edge*2+2]), 2)
-                            )
+                # 目の両端
+                if args.num_labels == 98:
+                    left_eye_edge = 60
+                    right_eye_edge = 72
+                elif args.num_labels == 68:
+                    left_eye_edge = 36
+                    right_eye_edge = 45
+                elif args.num_labels == 52:
+                    left_eye_edge = 20
+                    right_eye_edge = 29
+                else:
+                    print("eye error")
+                    exit()
+                # print("eye: ", left_eye_edge)
+                # print("eye; ", right_eye_edge)
+                # print("labels: ", args.num_labels)
+                time.sleep(2)
+                """
+                interocular_distance = np.sqrt(
+                    np.sum(
+                        pow((landmark[left_eye_edge*2:left_eye_edge*2+2] - landmark[right_eye_edge*2:right_eye_edge*2+2]), 2)
                         )
                     error_norm = error_all_points / (interocular_distance * args.num_labels)
                     """

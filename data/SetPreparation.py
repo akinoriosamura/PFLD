@@ -52,9 +52,35 @@ class ImageDate():
         #145: 模糊(blur)         0->清晰(clear)                    1->模糊(blur)
         #146: image path
         """
-        if num_labels == 68:
+        if num_labels == 52:
             if dataset == "WFLW":
-                line = self.remove_unuse_land(line)
+                line = self.remove_unuse_land_98to52(line)
+            else:
+                line = self.remove_unuse_land_68to52(line)
+            if len(line) != (num_labels * 2 + 11):
+                import pdb;pdb.set_trace()
+            assert(len(line) == (num_labels * 2 + 11))
+            self.tracked_points = [9, 11, 12, 14, 20, 23, 26, 29, 17, 19, 32, 38, 41, 4]
+            self.list = line
+            self.landmark = np.asarray(list(map(float, line[:num_labels * 2])), dtype=np.float32).reshape(-1, 2)
+            self.box = np.asarray(list(map(int, line[num_labels * 2:num_labels * 2 + 4])), dtype=np.int32)
+            flag = list(map(int, line[num_labels * 2 + 4: num_labels * 2 + 10]))
+            flag = list(map(bool, flag))
+            self.pose = flag[0]
+            self.expression = flag[1]
+            self.illumination = flag[2]
+            self.make_up = flag[3]
+            self.occlusion = flag[4]
+            self.blur = flag[5]
+            self.path = os.path.join(imgDir, line[num_labels * 2 + 10])
+            self.img = None
+            self.num_labels = num_labels
+            debug = False
+            if debug:
+                self.show_labels()
+        elif num_labels == 68:
+            if dataset == "WFLW":
+                line = self.remove_unuse_land_98to68(line)
             if len(line) != 147:
                 import pdb;pdb.set_trace()
             assert(len(line) == 147)
@@ -99,7 +125,42 @@ class ImageDate():
         self.landmarks = []
         self.boxes = []
 
-    def remove_unuse_land(self, line):
+    def remove_unuse_land_68to52(self, line):
+        del_ago = [2,3,6,8,10,12,15,16]
+        del_left_eye_blow = [19,21]
+        del_right_eye_blow = [24,26]
+        del_nose = [29,31,33,35]
+        dels = del_ago + del_left_eye_blow + del_right_eye_blow + del_nose
+        # 削除する際にインデックスがずれないように降順に削除していく
+        dels.sort(reverse=True)
+        for del_id in dels:
+            del_id_y = del_id * 2 + 1
+            del_id_x = del_id * 2
+            line.pop(del_id_y)
+            line.pop(del_id_x)
+
+        return line
+
+
+    def remove_unuse_land_98to52(self, line):
+        del_ago = [1,2,3,5,6,7,9,10,11,13,14,15,17,18,19,21,22,23,25,26,27,29,30,31]
+        del_left_eye_blow = [34,36,38,39,40,41]
+        del_right_eye_blow = [43,45,47,48,49,50]
+        del_eye = [62,66,70,74]
+        del_eye_center = [96,97]
+        del_nose = [52,54,56,58]
+        dels = del_ago + del_left_eye_blow + del_right_eye_blow + del_eye + del_eye_center + del_nose
+        # 削除する際にインデックスがずれないように降順に削除していく
+        dels.sort(reverse=True)
+        for del_id in dels:
+            del_id_y = del_id * 2 + 1
+            del_id_x = del_id * 2
+            line.pop(del_id_y)
+            line.pop(del_id_x)
+
+        return line
+
+    def remove_unuse_land_98to68(self, line):
         del_ago = [2, 4, 6, 8, 9, 11, 12, 14, 18, 20, 21, 23, 24, 26, 28, 30]
         del_left_eye_blow = [38, 39, 40, 41]
         del_right_eye_blow = [47, 48, 49, 50]
@@ -120,12 +181,11 @@ class ImageDate():
         img = cv2.imread(self.path)
         # WFLW bbox: x_min_rect y_min_rect x_max_rect y_max_rect
         cv2.rectangle(img, (self.box[0], self.box[1]), (self.box[2], self.box[3]), (255, 0, 0), 1, 1)
-        for x, y in self.landmark:
-            cv2.circle(img, (x, y), 3, (0, 0, 255))
+        for land_id, (x, y) in enumerate(self.landmark):
+            cv2.circle(img, (x, y), 3, (0, 255, 0))
+            cv2.putText(img, str(land_id), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.2, (255, 0, 0), thickness=1)
 
-        cv2.imshow("", img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        cv2.imwrite("./setprepa_sam_label.jpg", img)
 
     def load_data(self, is_train, rotate, repeat, mirror=None):
         if (mirror is not None):
