@@ -12,44 +12,43 @@ def extract_annotations(labels_xml):
     # save labels in lines
     annotations = []
     error_files = []
-    correct_img_num = 0
-    error_num = 0
-    for img_xml in labels_xml[0].iter('image'):
-        try:
-            annotation = []
-            # IMG_0555 2-1.jpg注意
-            img_file = img_xml.attrib["file"].replace(" ", "_")
-            # {'top': '49', 'left': '49', 'width': '193', 'height': '194'}
-            box = img_xml[0].attrib
-            bbox = [box["top"], box["left"], box["width"], box["height"]]
-            bbox = list(map(str, bbox))
-            landmarks = []
-            for land_xml in img_xml[0]:
-                # , {'name': '67', 'x': '93', 'y': '180'}
-                landmark_ = land_xml.attrib
-                landmark = [landmark_['x'], landmark_['y']]
-                landmarks.append(landmark)
-                landmark = list(map(str, landmark))
-                annotation.extend(landmark)
-            annotation.extend(bbox)
-            # random attributes
-            attributes = [0] * 6
-            attributes = list(map(str, attributes))
-            annotation.extend(attributes)
-            annotation.extend([img_file])
-            assert len(annotation) == 147
+    images_id = -1
+    for id, label_xml in enumerate(labels_xml):
+        if label_xml.tag == 'images':
+            images_id = id
+    for img_xml in labels_xml[images_id].iter('image'):
+        img_file = img_xml.attrib["file"]
+        # {'top': '49', 'left': '49', 'width': '193', 'height': '194'}
+        for label_xml in img_xml:
+            try:
+                annotation = []
+                box = label_xml.attrib
+                bbox = [box["top"], box["left"], box["width"], box["height"]]
+                bbox = list(map(str, bbox))
+                landmarks = []
+                for land_xml in label_xml:
+                    # , {'name': '67', 'x': '93', 'y': '180'}
+                    if land_xml.tag == 'label':
+                        continue
+                    landmark_ = land_xml.attrib
+                    landmark = [landmark_['x'], landmark_['y']]
+                    landmarks.append(landmark)
+                    landmark = list(map(str, landmark))
+                    annotation.extend(landmark)
+                annotation.extend(bbox)
+                # random attributes
+                attributes = [0] * 6
+                attributes = list(map(str, attributes))
+                annotation.extend(attributes)
+                annotation.extend([img_file])
+                assert len(annotation) == 147
 
-            annotations.append(annotation)
-            correct_img_num += 1
-        except Exception as e:
-            error_num += 1
-            print("例外args:", e.args)
-            print(img_file)
-            error_files.append(img_file)
-            continue
-
-    print("correct img num: ", correct_img_num)
-    print("error img num: ", error_num)
+                annotations.append(annotation)
+            except Exception as e:
+                print("例外args:", e.args)
+                print(img_file)
+                error_files.append(img_file)
+                continue
 
     return annotations
 
@@ -65,10 +64,6 @@ if __name__ == '__main__':
             <part name="02" x="58" y="148" />
             ...
         img_dir: image dir
-
-    growing dataはタブがファイル名にあるので変換の必要あり
-    ex: find . -name "* *" | rename 's/ /_/g'
-    ex: python labels_xml_to_line.py /data/dataset/growing/traindata8979_20180601.xml /data/dataset/growing/growing_20180601
 
     Save:
         txt: label lines text(train text : test text = 90 : 10)
