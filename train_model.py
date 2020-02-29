@@ -316,27 +316,26 @@ def test(sess, list_ops, args):
                     landmarks[k][(count_point * 2):(count_point * 2 + 2)]
                 error = np.sqrt(np.sum(error_diff * error_diff))
                 error_all_points += error
-            # 目の両端
-            if args.num_labels == 98:
-                left_eye_edge = 60
-                right_eye_edge = 72
-            elif args.num_labels == 68:
-                left_eye_edge = 36
-                right_eye_edge = 45
-            elif args.num_labels == 52:
-                left_eye_edge = 20
-                right_eye_edge = 29
-            else:
-                print("eye error")
-                exit()
-            # print("eye: ", left_eye_edge)
-            # print("eye; ", right_eye_edge)
-            # print("labels: ", args.num_labels)
-            time.sleep(3)
-            interocular_distance = np.sqrt(
-                np.sum(
-                    pow((landmarks[k][left_eye_edge*2:left_eye_edge*2+2] - landmarks[k][right_eye_edge*2:right_eye_edge*2+2]), 2)
-                    )
+            if (args.num_labels == 52) or (args.num_labels == 68) or (args.num_labels == 98):
+                # 目の両端
+                if args.num_labels == 98:
+                    left_eye_edge = 60
+                    right_eye_edge = 72
+                elif args.num_labels == 68:
+                    left_eye_edge = 36
+                    right_eye_edge = 45
+                elif args.num_labels == 52:
+                    left_eye_edge = 20
+                    right_eye_edge = 29
+                else:
+                    print("eye error")
+                    exit()
+                time.sleep(3)
+                interocular_distance = np.sqrt(
+                    np.sum(
+                        pow((landmarks[k][left_eye_edge*2:left_eye_edge*2+2] - landmarks[k][right_eye_edge*2:right_eye_edge*2+2]), 2)
+                        )
+                )
                 error_norm = error_all_points / (interocular_distance * args.num_labels)
             else:
                 error_norm = error_all_points

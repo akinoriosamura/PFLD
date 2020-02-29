@@ -52,7 +52,29 @@ class ImageDate():
         #145: 模糊(blur)         0->清晰(clear)                    1->模糊(blur)
         #146: image path
         """
-        if num_labels == 68:
+        if num_labels == 52:
+            if len(line) != (num_labels * 2 + 11):
+                import pdb;pdb.set_trace()
+            assert(len(line) == (num_labels * 2 + 11))
+            self.tracked_points = [9, 11, 12, 14, 20, 23, 26, 29, 17, 19, 32, 38, 41, 4]
+            self.list = line
+            self.landmark = np.asarray(list(map(float, line[:num_labels * 2])), dtype=np.float32).reshape(-1, 2)
+            self.box = np.asarray(list(map(int, line[num_labels * 2:num_labels * 2 + 4])), dtype=np.int32)
+            flag = list(map(int, line[num_labels * 2 + 4: num_labels * 2 + 10]))
+            flag = list(map(bool, flag))
+            self.pose = flag[0]
+            self.expression = flag[1]
+            self.illumination = flag[2]
+            self.make_up = flag[3]
+            self.occlusion = flag[4]
+            self.blur = flag[5]
+            self.path = line[num_labels * 2 + 10]
+            self.img = None
+            self.num_labels = num_labels
+            debug = False
+            if debug:
+                self.show_labels()
+        elif num_labels == 68:
             if len(line) != 147:
                 import pdb;pdb.set_trace()
             assert(len(line) == 147)
@@ -262,13 +284,17 @@ def get_dataset_list(outDir, landmarkDir, is_train, rotate, num_labels, image_si
             lines = lines[:100]
         print("get file num: ", len(lines))
         for i, line in enumerate(lines):
-            if len(line.strip().split()) != 147:
+            if len(line.strip().split()) != num_labels * 2 + 11:
                 print("error num of line in :")
                 print(line)
                 continue
             Img = ImageDate(line, num_labels, image_size, dataset)
             img_name = Img.path
-            Img.load_data(is_train, rotate, 10, Mirror_file)
+            if not os.path.exists(img_name):
+                print("path is not exists: ")
+                print(img_name)
+                continue
+            Img.load_data(is_train, rotate, 5, Mirror_file)
             _, filename = os.path.split(img_name)
             filename, _ = os.path.splitext(filename)
             label_txt = Img.save_data(save_img, str(i) + '_' + filename)
