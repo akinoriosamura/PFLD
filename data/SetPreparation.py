@@ -344,7 +344,7 @@ def get_dataset_list(imgDir, outDir, landmarkDir, is_train, rotate, num_labels, 
         for i, line in enumerate(lines):
             Img = ImageDate(line, imgDir, num_labels, image_size, dataset)
             img_name = Img.path
-            Img.load_data(is_train, rotate, 10, Mirror_file)
+            Img.load_data(is_train, rotate, 5, Mirror_file)
             _, filename = os.path.split(img_name)
             filename, _ = os.path.splitext(filename)
             label_txt = Img.save_data(save_img, str(i) + '_' + filename)

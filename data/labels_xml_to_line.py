@@ -137,5 +137,13 @@ if __name__ == '__main__':
         for idx, anno in enumerate(test_annos):
             str_anno = " ".join(anno) + "\n"
             f.write(str_anno)
-
+    """
+    # save test text
+    save_path = xml[:-4] + ".txt"
+    with open(save_path, mode='w') as f:
+        for idx, anno in enumerate(annotations):
+            str_anno = " ".join(anno) + "\n"
+            f.write(str_anno)
+    print("total num: ", idx)
+    """
     print("finish save text labels")

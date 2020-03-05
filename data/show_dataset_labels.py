@@ -1,42 +1,47 @@
 import sys
 import cv2
 import numpy as np
+import random
 import os
 
 
 if __name__ == "__main__":
-    """
-    anno_path = sys.argv[1] # labels txt 
-    img_dir = sys.argv[2]
+    label_num = int(sys.argv[1])
+    # pre processed txt label
+    anno_path = sys.argv[2] # labels txt 
     with open(anno_path, 'r') as f:
         lines = f.readlines()
     os.makedirs("checklabels", exist_ok=True)
 
-    # line = lines[1].strip().split()
+    lines = random.sample(lines, k=5)
+    # lines = lines[:5]
 
     for line in lines:
         line = line.strip().split()
-        landmarks = np.asarray(list(map(float, line[:136])), dtype=np.float32).reshape(-1, 2)
-        bbox = np.asarray(list(map(float, line[136:140])), dtype=np.int32)
-        attribs = np.asarray(list(map(float, line[140:146])), dtype=np.int32)
-        img = cv2.imread(img_path)
+        landmarks = np.asarray(list(map(float, line[:label_num*2])), dtype=np.float32).reshape(-1, 2)
+        bbox = np.asarray(list(map(float, line[label_num*2:label_num*2+4])), dtype=np.int32)
+        # attribs = np.asarray(list(map(float, line[140:146])), dtype=np.int32)
+        img_name = line[-1]
+        img = cv2.imread(img_name)
+        print(img.shape)
         cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[0] + bbox[2], bbox[1] + bbox[3]), (255, 0, 0), 1, 1)
         id = 1
+        # import pdb; pdb.set_trace()
         for x, y in landmarks:
             cv2.circle(img, (x, y), 3, (0, 255, 0))
-            cv2.imwrite("./show_labeled" + str(id) + ".jpg", img)
             id += 1
-        break
+        cv2.imwrite(os.path.join("checklabels", "show_labeled" + os.path.basename(img_name) + str(id) + ".jpg"), img)
     """
-    
-    anno_path = sys.argv[1]
+    label_num = int(sys.argv[1])
+    # post processed txt label
+    anno_path = sys.argv[2]
     with open(anno_path, 'r') as f:
         lines = f.readlines()
 
     line = lines[2].strip().split()
     img_path = line[0]
     # for lip 20 points
-    landmarks = np.asarray(list(map(float, line[1:41])), dtype=np.float32)
+    landmarks = np.asarray(list(map(float,  line[1:label_num*2+1])), dtype=np.float32)
     # for 68points
     # landmarks = np.asarray(list(map(float, line[1:137])), dtype=np.float32)
     landmarks = landmarks.reshape(-1, 2)
@@ -50,3 +55,4 @@ if __name__ == "__main__":
         id += 1
 
     print("finish")
+    """

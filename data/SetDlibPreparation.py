@@ -294,7 +294,7 @@ def get_dataset_list(outDir, landmarkDir, is_train, rotate, num_labels, image_si
                 print("path is not exists: ")
                 print(img_name)
                 continue
-            Img.load_data(is_train, rotate, 5, Mirror_file)
+            Img.load_data(is_train, rotate, 10, Mirror_file)
             _, filename = os.path.split(img_name)
             filename, _ = os.path.splitext(filename)
             label_txt = Img.save_data(save_img, str(i) + '_' + filename)
