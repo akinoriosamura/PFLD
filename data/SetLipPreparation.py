@@ -113,121 +113,124 @@ class ImageDate():
             imgT = cv2.copyMakeBorder(imgT, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
         if imgT.shape[0] == 0 or imgT.shape[1] == 0:
             # 顔枠サイズが0なら
-            imgTT = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-        if self.debug:
-            # 表示して確認
-            img_tmp = imgT.copy()
-            for x, y in ((self.landmark_lip - xy) + 0.5).astype(np.int32):
-                cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
-            for x, y in (self.pcn_landmark_lip - xy + 0.5).astype(np.int32):
-                cv2.circle(img_tmp, (x, y), 1, (0, 255, 2))
-            cv2.imwrite("./sample_lip_resized.jpg", img_tmp)
-            # import pdb;pdb.set_trace()
-        if is_train:
-            # 学習データに対してはリサイズ
-            imgT = cv2.resize(imgT, (self.image_size, self.image_size))
-        # クロップサイズに輪郭点ラベルを合わせる
-        if self.debug:
-            # 表示して確認
-            img_tmp = imgT.copy()
-            for x, y in (self.landmark_lip + 0.5).astype(np.int32):
-                cv2.circle(img_tmp, (x, y), 2, (255, 0, 0))
-            for x, y in (self.pcn_landmark_lip + 0.5).astype(np.int32):
-                cv2.circle(img_tmp, (x, y), 2, (0, 255, 2))
-            cv2.imwrite("./sample_lip_resized1.jpg", img_tmp)
-            # import pdb;pdb.set_trace()
-        landmark_lip = (self.landmark_lip - xy) / boxsize
-        print("get imgT and label")
-        if not (landmark_lip <= 1).all():
-            img_tmp = imgT.copy()
-            for x, y in (landmark_lip * boxsize + 0.5).astype(np.int32):
-                cv2.circle(img_tmp, (x, y), 2, (255, 0, 0))
-            cv2.imwrite("./sample_lip_except.jpg", img_tmp)
-            print("save  unuse image")
+            # imgTT = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+            print("no face bbox")
         else:
-            assert (landmark_lip >= 0).all(), str(landmark_lip) + str([dx, dy])
-            assert (landmark_lip <= 1).all(), str(landmark_lip) + str([dx, dy])
-            self.landmark_lips.append(landmark_lip)
-            self.landmarks.append(self.landmark)
-            self.imgs.append(imgT)
             if self.debug:
                 # 表示して確認
                 img_tmp = imgT.copy()
-                for x, y in (landmark_lip * self.image_size + 0.5).astype(np.int32):
+                for x, y in ((self.landmark_lip - xy) + 0.5).astype(np.int32):
+                    cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
+                for x, y in (self.pcn_landmark_lip - xy + 0.5).astype(np.int32):
+                    cv2.circle(img_tmp, (x, y), 1, (0, 255, 2))
+                cv2.imwrite("./sample_lip_resized.jpg", img_tmp)
+                # import pdb;pdb.set_trace()
+            if is_train:
+                # 学習データに対してはリサイズ
+                imgT = cv2.resize(imgT, (self.image_size, self.image_size))
+            # クロップサイズに輪郭点ラベルを合わせる
+            if self.debug:
+                # 表示して確認
+                img_tmp = imgT.copy()
+                for x, y in (self.landmark_lip + 0.5).astype(np.int32):
                     cv2.circle(img_tmp, (x, y), 2, (255, 0, 0))
                 for x, y in (self.pcn_landmark_lip + 0.5).astype(np.int32):
                     cv2.circle(img_tmp, (x, y), 2, (0, 255, 2))
-                cv2.imwrite("./sample_lip_resized3.jpg", img_tmp)
+                cv2.imwrite("./sample_lip_resized1.jpg", img_tmp)
                 # import pdb;pdb.set_trace()
-            print("pre rotate")
-            if rotate=="rotate" and is_train:
-                # =========データ拡張=========
-                num_repeated = 0
-                while len(self.imgs) < repeat:
-                    if num_repeated > 1000:
-                        # 正解ラベルが1000回続けて出なければrotateなしに
-                        # import pdb;pdb.set_trace()
-                        repeat = 0
-                        print("repear set 0")
-                        continue
-                    # print("num of rotate img for repeat: ", len(self.imgs))
-                    angle = np.random.randint(-20, 20)
-                    cx, cy = center
-                    cx = cx + int(np.random.randint(-boxsize * 0.1, boxsize * 0.1))
-                    cy = cy + int(np.random.randint(-boxsize * 0.1, boxsize * 0.1))
-                    M, landmark_lip = apply_rotate(angle, (cx, cy), self.landmark_lip)
+            landmark_lip = (self.landmark_lip - xy) / boxsize
+            print("get imgT and label")
+            if not (landmark_lip <= 1).all() or not (landmark_lip >= 0).all():
+                img_tmp = imgT.copy()
+                for x, y in (landmark_lip * boxsize + 0.5).astype(np.int32):
+                    cv2.circle(img_tmp, (x, y), 2, (255, 0, 0))
+                cv2.imwrite("./sample_lip_except.jpg", img_tmp)
+                print("save  unuse image")
+            else:
+                assert (landmark_lip >= 0).all(), str(landmark_lip) + str([dx, dy])
+                assert (landmark_lip <= 1).all(), str(landmark_lip) + str([dx, dy])
+                self.landmark_lips.append(landmark_lip)
+                self.landmarks.append(self.landmark)
+                self.imgs.append(imgT)
+                if self.debug:
+                    # 表示して確認
+                    img_tmp = imgT.copy()
+                    for x, y in (landmark_lip * self.image_size + 0.5).astype(np.int32):
+                        cv2.circle(img_tmp, (x, y), 2, (255, 0, 0))
+                    for x, y in (self.pcn_landmark_lip + 0.5).astype(np.int32):
+                        cv2.circle(img_tmp, (x, y), 2, (0, 255, 2))
+                    cv2.imwrite("./sample_lip_resized3.jpg", img_tmp)
+                    # import pdb;pdb.set_trace()
+                print("pre rotate")
+                if rotate=="rotate" and is_train:
+                    # =========データ拡張=========
+                    num_repeated = 0
+                    while len(self.imgs) < repeat:
+                        if num_repeated > 1000:
+                            # 正解ラベルが1000回続けて出なければrotateなしに
+                            # import pdb;pdb.set_trace()
+                            repeat = 0
+                            print("repear set 0")
+                            continue
+                        # print("num of rotate img for repeat: ", len(self.imgs))
+                        angle = np.random.randint(-20, 20)
+                        cx, cy = center
+                        # cx = cx + int(np.random.randint(-boxsize * 0.1, boxsize * 0.1))
+                        # cy = cy + int(np.random.randint(-boxsize * 0.1, boxsize * 0.1))
+                        M, landmark_lip = apply_rotate(angle, (cx, cy), self.landmark_lip)
 
-                    imgT = cv2.warpAffine(img, M, (int(img.shape[1] * 1.1), int(img.shape[0] * 1.1)))
-                    wh = np.ptp(landmark_lip, axis=0).astype(np.int32) + 1
-                    size = np.random.randint(int(np.min(wh)), np.ceil(np.max(wh) * 1.25))
-                    xy = np.asarray((cx - size // 2, cy - size // 2), dtype=np.int32)
-                    landmark_lip = (landmark_lip - xy) / size
-                    if self.debug:
-                        # 表示して確認
-                        img_tmp = imgT.copy()
-                        for x, y in (landmark_lip * self.image_size + 0.5).astype(np.int32):
-                            cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
-                        cv2.imwrite("./sample_rotated.jpg", img_tmp)
-                        # import pdb;pdb.set_trace()
-                    if (landmark_lip < 0).any() or (landmark_lip > 1).any():
-                        # print("wrong lip landmark so continue")
-                        num_repeated += 1
-                        continue
+                        rotate_imgT = cv2.warpAffine(img, M, (int(img.shape[1] * 1.1), int(img.shape[0] * 1.1)))
+                        wh = np.ptp(landmark_lip, axis=0).astype(np.int32) + 1
+                        # size = np.random.randint(int(np.min(wh)), np.ceil(np.max(wh) * 1.25))
+                        size = boxsize
+                        xy = np.asarray((cx - size // 2, cy - size // 2), dtype=np.int32)
+                        landmark_lip = (landmark_lip - xy) / size
+                        if self.debug:
+                            # 表示して確認
+                            img_tmp = rotate_imgT.copy()
+                            for x, y in (landmark_lip * self.image_size + 0.5).astype(np.int32):
+                                cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
+                            cv2.imwrite("./sample_rotated.jpg", img_tmp)
+                            # import pdb;pdb.set_trace()
+                        if (landmark_lip < 0).any() or (landmark_lip > 1).any():
+                            # print("wrong lip landmark so continue")
+                            num_repeated += 1
+                            continue
 
-                    x1, y1 = xy
-                    x2, y2 = xy + size
-                    height, width, _ = imgT.shape
-                    dx = max(0, -x1)
-                    dy = max(0, -y1)
-                    x1 = max(0, x1)
-                    y1 = max(0, y1)
+                        x1, y1 = xy
+                        x2, y2 = xy + size
+                        height, width, _ = rotate_imgT.shape
+                        dx = max(0, -x1)
+                        dy = max(0, -y1)
+                        x1 = max(0, x1)
+                        y1 = max(0, y1)
 
-                    edx = max(0, x2 - width)
-                    edy = max(0, y2 - height)
-                    x2 = min(width, x2)
-                    y2 = min(height, y2)
+                        edx = max(0, x2 - width)
+                        edy = max(0, y2 - height)
+                        x2 = min(width, x2)
+                        y2 = min(height, y2)
 
-                    imgT = imgT[y1:y2, x1:x2]
-                    if (dx > 0 or dy > 0 or edx > 0 or edy > 0):
-                        imgT = cv2.copyMakeBorder(imgT, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
+                        rotate_imgT = rotate_imgT[y1:y2, x1:x2]
+                        if (dx > 0 or dy > 0 or edx > 0 or edy > 0):
+                            rotate_imgT = cv2.copyMakeBorder(rotate_imgT, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
 
-                    imgT = cv2.resize(imgT, (self.image_size, self.image_size))
+                        rotate_imgT = cv2.resize(rotate_imgT, (self.image_size, self.image_size))
 
-                    if mirror is not None and np.random.choice((True, False)):
-                        landmark_lip[:, 0] = 1 - landmark_lip[:, 0]
-                        landmark_lip = landmark_lip[mirror_idx]
-                        imgT = cv2.flip(imgT, 1)
+                        if mirror is not None and np.random.choice((True, False)):
+                            landmark_lip[:, 0] = 1 - landmark_lip[:, 0]
+                            landmark_lip = landmark_lip[mirror_idx]
+                            rotate_imgT = cv2.flip(rotate_imgT, 1)
 
-                    self.landmark_lips.append(landmark_lip)
-                    self.landmarks.append(self.landmark)
-                    self.imgs.append(imgT)
-                    if self.debug:
-                        # 表示して確認
-                        img_tmp = imgT.copy()
-                        for x, y in (landmark_lip * self.image_size + 0.5).astype(np.int32):
-                            cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
-                        cv2.imwrite("./sample_lip_resized4.jpg", img_tmp)
-                        # import pdb;pdb.set_trace()
+                        self.landmark_lips.append(landmark_lip)
+                        self.landmarks.append(self.landmark)
+                        self.imgs.append(rotate_imgT)
+                        if self.debug:
+                            # 表示して確認
+                            img_tmp = rotate_imgT.copy()
+                            for x, y in (landmark_lip * self.image_size + 0.5).astype(np.int32):
+                                cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
+                            cv2.imwrite("./sample_lip_resized4.jpg", img_tmp)
+                            # import pdb;pdb.set_trace()
 
     def save_data(self, path, prefix):
         # attributeは特にいじらず保存

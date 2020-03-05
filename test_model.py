@@ -95,7 +95,6 @@ def main(args):
             for file_id, file in enumerate(file_list):
                 filename = os.path.split(file)[-1]
                 image = cv2.imread(file)
-                # image = cv2.resize(image, (image_size, image_size))
                 input = cv2.cvtColor(image.copy(), cv2.COLOR_BGR2RGB)
                 input = cv2.resize(input, (args.image_size, args.image_size))
                 input = input.astype(np.float32) / 256.0
@@ -179,7 +178,7 @@ def main(args):
                 error_norm = error_all_points
                 print("error_norm: ", error_norm)
                 landmark_error += error_norm
-                if error_norm >= 0.5:
+                if error_norm >= 0.02:
                     landmark_01_num += 1
 
             loss = loss_sum / (len(file_list) * 1.0)
