@@ -3,7 +3,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from utils import train_model
-from pfld import create_model
+# from pfld import create_model
+from tfjs import create_model
 from generate_data import DataLoader
 from data_augmentor import DataAugmentator
 import time
@@ -78,7 +79,7 @@ def main(args):
         print('Building training graph.')
         # total_loss, landmarks, heatmaps_loss, heatmaps= create_model(image_batch, landmark_batch,\
         #                                                                                phase_train_placeholder, args)
-        landmarks_pre, landmarks_loss, euler_angles_pre = create_model(image_batch, landmark_batch,
+        landmarks_pre, landmarks_loss = create_model(image_batch, landmark_batch,
                                                                        phase_train_placeholder, args)
 
         attributes_w_n = tf.to_float(attribute_batch[:, 1:6])
@@ -90,9 +91,9 @@ def main(args):
         list_ops['attributes_w_n_batch'] = attributes_w_n
 
         L2_loss = tf.add_n(tf.losses.get_regularization_losses())
-        _sum_k = tf.reduce_sum(tf.map_fn(lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
+        # _sum_k = tf.reduce_sum(tf.map_fn(lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
         loss_sum = tf.reduce_sum(tf.square(landmark_batch - landmarks_pre), axis=1)
-        loss_sum = tf.reduce_mean(loss_sum * _sum_k)#  * attributes_w_n)
+        loss_sum = tf.reduce_mean(loss_sum) #  * _sum_k)#  * attributes_w_n)
         loss_sum += L2_loss
 
         # quantize

@@ -9,11 +9,12 @@ if __name__ == "__main__":
     label_num = int(sys.argv[1])
     # pre processed txt label
     anno_path = sys.argv[2] # labels txt 
+    img_dir = sys.argv[3] # img dir or dlib
     with open(anno_path, 'r') as f:
         lines = f.readlines()
     os.makedirs("checklabels", exist_ok=True)
 
-    lines = random.sample(lines, k=5)
+    lines = random.sample(lines, k=20)
     # lines = lines[:5]
 
     for line in lines:
@@ -21,10 +22,14 @@ if __name__ == "__main__":
         landmarks = np.asarray(list(map(float, line[:label_num*2])), dtype=np.float32).reshape(-1, 2)
         bbox = np.asarray(list(map(float, line[label_num*2:label_num*2+4])), dtype=np.int32)
         # attribs = np.asarray(list(map(float, line[140:146])), dtype=np.int32)
-        img_name = line[-1]
+        if img_dir == "dlib":
+            img_name = line[-1]
+        else:
+            img_name = os.path.join(img_dir, line[-1])
         img = cv2.imread(img_name)
         print(img.shape)
-        cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[0] + bbox[2], bbox[1] + bbox[3]), (255, 0, 0), 1, 1)
+        # line_bb = [x1, y1, x2, y2]
+        cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (255, 0, 0), 1, 1)
         id = 1
         # import pdb; pdb.set_trace()
         for x, y in landmarks:

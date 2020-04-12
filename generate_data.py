@@ -97,13 +97,13 @@ class DataLoader():
         #o_landmarks = self.landmarks
         if self.phase == "train" and self.args.is_augment:
             print("======= augment =========")
-            tfrecord_path = "./data/augment_" + self.phase + ".tfrecords"
+            tfrecord_path = os.path.join(self.args.tfrecords_dir, ("augment_" + self.phase + ".tfrecords"))
             augments = np.array(list(map(self.dataaugmentor.augment_image, self.images, self.landmarks)))
             self.images = np.array(list(augments[:, 0]))
             self.landmarks = np.array(list(augments[:, 1]))
         else:
             print("======= not augment =========")
-            tfrecord_path = "./data/unaugment_" + self.phase + ".tfrecords"
+            tfrecord_path = os.path.join(self.args.tfrecords_dir, ("unaugment_" + self.phase + ".tfrecords"))
         #import pdb;pdb.set_trace()
         #save_anno(o_images[0], o_landmarks[0]*256, "ori")
         #save_anno(self.images[0], (self.landmarks[0]*256), "aug")

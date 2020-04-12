@@ -23,3 +23,5 @@ SavedModelPre/
 SavedModel/
 .mypy_cache/
 *.tflite
+data/__MACOSX/
+

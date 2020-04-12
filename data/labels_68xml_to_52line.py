@@ -7,6 +7,17 @@ import xml.etree.ElementTree as ET
 from sklearn.model_selection import train_test_split
 
 
+def del_68to52(lands):
+    del_i = [2, 3, 6, 8, 10, 12, 15, 16, 19, 21, 24, 26, 29, 31, 33, 35]
+    new_lands = []
+    for id, land in enumerate(lands, 1):
+        if id in del_i:
+            continue
+        new_lands.append(land)
+    # import pdb; pdb.set_trace()
+
+    return new_lands
+
 def extract_annotations(labels_xml, label_num):
     # crerate attributes and shape each label
     # save labels in lines
@@ -21,29 +32,31 @@ def extract_annotations(labels_xml, label_num):
         img_file = img_xml.attrib["file"]
         # {'top': '49', 'left': '49', 'width': '193', 'height': '194'}
         for label_xml in img_xml:
+            annotation = []
+            box = label_xml.attrib
+            bbox = [box["left"], box["top"], str(int(box["left"])+int(box["width"])), str(int(box["top"])+int(box["height"]))]
+            bbox = list(map(str, bbox))
+            landmarks = []
+            for land_xml in label_xml:
+                # , {'name': '67', 'x': '93', 'y': '180'}
+                if land_xml.tag == 'label':
+                    continue
+                landmark_ = land_xml.attrib
+                landmark = [landmark_['x'], landmark_['y']]
+                landmarks.append(landmark)
+            landmarks = del_68to52(landmarks)
+            for lands in landmarks:
+                for land in lands:
+                    annotation.append(str(land))
+            annotation.extend(bbox)
+            # random attributes
+            attributes = [0] * 6
+            attributes = list(map(str, attributes))
+            annotation.extend(attributes)
+            annotation.extend([img_file])
+            if len(annotation) != 52*2+11:
+                import pdb; pdb.set_trace()
             try:
-                annotation = []
-                box = label_xml.attrib
-                bbox = [box["left"], box["top"], str(int(box["left"])+int(box["width"])), str(int(box["top"])+int(box["height"]))]
-                bbox = list(map(str, bbox))
-                landmarks = []
-                for land_xml in label_xml:
-                    # , {'name': '67', 'x': '93', 'y': '180'}
-                    if land_xml.tag == 'label':
-                        continue
-                    landmark_ = land_xml.attrib
-                    landmark = [landmark_['x'], landmark_['y']]
-                    landmarks.append(landmark)
-                    landmark = list(map(str, landmark))
-                    annotation.extend(landmark)
-                annotation.extend(bbox)
-                # random attributes
-                attributes = [0] * 6
-                attributes = list(map(str, attributes))
-                annotation.extend(attributes)
-                annotation.extend([img_file])
-                assert len(annotation) == label_num*2+11
-
                 annotations.append(annotation)
                 image_num += 1
             except Exception as e:
@@ -84,17 +97,18 @@ if __name__ == '__main__':
     """
     # get labels
     DEBUG = False
-    if len(sys.argv) == 4:
+    if len(sys.argv) == 3:
         xml = sys.argv[1]
-        label_num = int(sys.argv[2])
-        img_dir = sys.argv[3] # img_dir or dlib
+        img_dir = sys.argv[2] # img_dir or dlib
         tree = ET.parse(xml)
         labels_xml = tree.getroot()
     else:
         print("error: please write xml path and img dir and datatype")
         exit()
 
+    label_num = 68
     annotations = extract_annotations(labels_xml, label_num)
+    import pdb; pdb.set_trace()
 
     if DEBUG:
         annotations = annotations[:10]
@@ -126,24 +140,9 @@ if __name__ == '__main__':
         exit()
 
     annotations = np.array(annotations)
-    train_annos, test_annos = train_test_split(annotations, test_size=0.01)
-
-    # save train text
-    save_path = xml[:-4] + "_train.txt"
-    with open(save_path, mode='w') as f:
-        for idx, anno in enumerate(train_annos):
-            str_anno = " ".join(anno) + "\n"
-            f.write(str_anno)
 
     # save test text
-    save_path = xml[:-4] + "_test.txt"
-    with open(save_path, mode='w') as f:
-        for idx, anno in enumerate(test_annos):
-            str_anno = " ".join(anno) + "\n"
-            f.write(str_anno)
-    """
-    # save test text
-    save_path = xml[:-4] + ".txt"
+    save_path = xml[:-4] + "_52.txt"
     with open(save_path, mode='w') as f:
         for idx, anno in enumerate(annotations):
             str_anno = " ".join(anno) + "\n"
@@ -151,4 +150,3 @@ if __name__ == '__main__':
     print("total num: ", idx)
 
     print("finish save text labels")
-    """

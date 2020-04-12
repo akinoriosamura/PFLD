@@ -52,7 +52,10 @@ class ImageDate():
         self.blur = flag[5]
         self.pcn_landmark = np.asarray(list(map(float, line[146:174])), dtype=np.float32).reshape(-1, 2)
         self.pcn_landmark_lip = self.pcn_landmark[3:5]
-        self.path = os.path.join(imgDir, line[-1])
+        if imgDir == 'None':
+            self.path = line[-1]
+        else:
+            self.path = os.path.join(imgDir, line[-1])
         self.img = None
         self.debug = True
         self.imgs = []
