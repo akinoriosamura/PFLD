@@ -22,6 +22,7 @@ def extract_annotations(json_dict):
             # bb
             # {'top': '49', 'left': '49', 'width': '193', 'height': '194'}
             box = label["bb"]
+            # bbox = [x1, y1, x2, y2]
             bbox = [int(box["left"]), int(box["top"]), int(box["left"])+int(box["width"]), int(box["top"])+int(box["height"])]
             bbox = list(map(str, bbox))
             for land_id in range(len(label["landmark"].values())):
@@ -58,7 +59,7 @@ def extract_annotations(json_dict):
 
 if __name__ == '__main__':
     # get labels
-    DEBUG = False
+    DEBUG = True
     if len(sys.argv) == 3:
         json_f = sys.argv[1]
         img_dir = sys.argv[2]
@@ -73,11 +74,12 @@ if __name__ == '__main__':
     if DEBUG:
         anno = annotations[0]
         landmarks = np.asarray(list(map(float, anno[:136])), dtype=np.float32).reshape(-1, 2)
+        # bbox = [x1, y1, x2, y2]
         bbox = np.asarray((anno[136:140]), dtype=np.int32)
         attribs = list(map(int, anno[140:146]))
         img_path = os.path.join(img_dir, anno[146])
         img = cv2.imread(img_path)
-        # cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[0] + bbox[2], bbox[1] + bbox[3]), (255, 0, 0), 1, 1)
+        cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (255, 0, 0), 1, 1)
 
         id = 1
         for x, y in landmarks:
@@ -87,7 +89,7 @@ if __name__ == '__main__':
 
     annotations = np.array(annotations)
 
-    train_annos, test_annos = train_test_split(annotations, test_size=0.01)
+    train_annos, test_annos = train_test_split(annotations, test_size=0.05)
 
     # save train text
     save_path = json_f[:-5] + "_train.txt"

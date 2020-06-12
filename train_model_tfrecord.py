@@ -3,9 +3,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from utils import train_model
-# from pfld import create_model
-# from tfjs import create_model
-from tfjs_aux import create_model
+from pfld import create_model
 from generate_data import DataLoader
 from data_augmentor import DataAugmentator
 import time
@@ -46,38 +44,17 @@ def main(args):
         print("============== get dataloader ==============")
         train_loader = DataLoader(args.file_list, args, "train", debug)
         test_loader = DataLoader(args.test_list, args, "test", debug)
+        num_train_file = train_loader.num_file
 
-        print("============ get train data ===============")
-        train_dataset, num_train_file = train_loader.get_dataset()
-        print("============ get test data ===============")
-        test_dataset, num_test_file = test_loader.get_dataset()
+        epoch_size = num_train_file // args.batch_size
+        print("num train file :", num_train_file)
+        print('Number of batches per epoch: {}'.format(epoch_size))
 
-        batch_train_dataset = train_dataset.batch(args.batch_size).repeat()
-        train_iterator = batch_train_dataset.make_one_shot_iterator()
-        train_next_element = train_iterator.get_next()
-
-        batch_test_dataset = test_dataset.batch(args.batch_size).repeat()
-        test_iterator = batch_test_dataset.make_one_shot_iterator()
-        test_next_element = test_iterator.get_next()
-
-        print('Total number of examples: {}'.format(num_train_file))
-        print('Test number of examples: {}'.format(num_test_file))
-
-        list_ops['num_train_file'] = num_train_file
-        list_ops['num_test_file'] = num_test_file
-
-        list_ops['train_dataset'] = train_dataset
-        list_ops['test_dataset'] = test_dataset
-        list_ops['train_next_element'] = train_next_element
-        list_ops['test_next_element'] = test_next_element
 
         tf.set_random_seed(args.seed)
         global_step = tf.Variable(0, trainable=False)
         list_ops['global_step'] = global_step
-
-        epoch_size = num_train_file // args.batch_size
-        print('Number of batches per epoch: {}'.format(epoch_size))
-
+    
         # ================== create models ================
         print("=================== create models ===============")
         # input node
@@ -99,8 +76,8 @@ def main(args):
         list_ops['phase_train_placeholder'] = phase_train_placeholder
 
         print('Building training graph.')
-        # landmarks_pre, landmarks_loss = create_model(image_batch, landmark_batch,
-        #                                                                phase_train_placeholder, args)
+        # total_loss, landmarks, heatmaps_loss, heatmaps= create_model(image_batch, landmark_batch,\
+        #                                                                                phase_train_placeholder, args)
         landmarks_pre, landmarks_loss, euler_angles_pre = create_model(image_batch, landmark_batch,
                                                                        phase_train_placeholder, args)
 
@@ -193,7 +170,37 @@ def main(args):
             merged = tf.summary.merge_all()
             train_write = tf.summary.FileWriter(log_dir, sess.graph)
 
+
             for epoch in range(epoch_start, args.max_epoch):
+                # shuffle and data augment 
+                # epoch 5の倍数の時のみdata shuffle and augment 作成
+                if (epoch % 5 == 0) or ("train_next_element" not in list_ops):
+                    print("============ get train data ===============")
+                    _, train_dataset = train_loader.gen_tfrecord()
+                    num_train_file = train_loader.num_file
+                    print("============ get test data ===============")
+                    _, test_dataset = test_loader.gen_tfrecord()
+                    num_test_file = test_loader.num_file
+
+                    batch_train_dataset = train_dataset.batch(args.batch_size).repeat()
+                    train_iterator = batch_train_dataset.make_one_shot_iterator()
+                    train_next_element = train_iterator.get_next()
+
+                    batch_test_dataset = test_dataset.batch(args.batch_size).repeat()
+                    test_iterator = batch_test_dataset.make_one_shot_iterator()
+                    test_next_element = test_iterator.get_next()
+
+                    print('Total number of examples: {}'.format(num_train_file))
+                    print('Test number of examples: {}'.format(num_test_file))
+
+                    list_ops['num_train_file'] = num_train_file
+                    list_ops['num_test_file'] = num_test_file
+
+                    list_ops['train_dataset'] = train_dataset
+                    list_ops['test_dataset'] = test_dataset
+                    list_ops['train_next_element'] = train_next_element
+                    list_ops['test_next_element'] = test_next_element
+
                 print("train start")
                 start = time.time()
                 train_L, train_L2 = train(sess, epoch_size, epoch, list_ops, args)
@@ -215,7 +222,7 @@ def main(args):
                     saver.export_meta_graph(metagraph_path)
                 print("save checkpoint: {}".format(checkpoint_path))
 
-                if epoch % 9 == 0 and epoch != 0:
+                if epoch % 10 == 0 and epoch != 0:
                     print("test start")
                     start = time.time()
                     test_ME, test_FR, test_loss = test(sess, list_ops, args)

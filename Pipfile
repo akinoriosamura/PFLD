@@ -62,6 +62,7 @@ shapely = "*"
 tfcoreml = {git = "https://github.com/akinoriosamura/tf-coreml"}
 torch = "==1.0.0"
 ipdb = "*"
+coremltools = "*"
 
 [requires]
 python_version = "3.6"

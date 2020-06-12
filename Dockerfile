@@ -6,7 +6,7 @@ RUN export LANG=C.UTF-8
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
-    wget build-essential gcc zlib1g-dev git default-mysql-client default-libmysqlclient-dev \
+    wget build-essential gcc zlib1g-dev git \
     vim \
     libsm6 \
     libxrender1 \

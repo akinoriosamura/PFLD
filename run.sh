@@ -3,15 +3,16 @@ phase=$1
 num_labels=68 # 20, 52
 depth_multi=0.75 # default = 1, like model complicated
 num_quant=64
-save_model=models2/save_models/68/tfjs
-file_list=/data/prepro_dataset/rotated_train_moru_cleanedv2_data/list.txt
-test_list=/data/prepro_dataset/rotated_test_moru_cleanedv2_data/list.txt
-# test_list=data/prepro_dataset/test_moru_dataset/list.txt
-pre_model=models2/save_models/68/tfjs
-out_dir=sam_tfjs
+save_model=models2/save_models/68/dm075_im84_aug_sam
+# file_list=/data/pcn_aug_clev2_grow_helen_wflw_68/rotated_train_aug_clev2_grow_helen_wflw_68/list.txt
+# test_list=/data/pcn_aug_clev2_grow_helen_wflw_68/rotated_test_aug_clev2_grow_helen_wflw_68/list.txt
+file_list=data/rotated_test_growing_data/list.txt
+test_list=data/rotated_test_growing_data/list.txt
+pre_model=models2/save_models/68/dm075_im84_aug_sam
+out_dir=sam_dm075_im84_aug_sam
 lr=0.0001
 is_augment=False  # True or False
-image_size=112
+image_size=84
 
 # --pretrained_model=${pre_model} \
 # CUDA_VISIBLE_DEVICES='' \
