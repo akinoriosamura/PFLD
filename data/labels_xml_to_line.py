@@ -6,7 +6,6 @@ import xml.etree.ElementTree as ET
 
 from sklearn.model_selection import train_test_split
 
-
 def extract_annotations(labels_xml, label_num):
     # crerate attributes and shape each label
     # save labels in lines
@@ -19,6 +18,11 @@ def extract_annotations(labels_xml, label_num):
     image_num = 0
     for img_xml in labels_xml[images_id].iter('image'):
         img_file = img_xml.attrib["file"]
+        if " " in img_file:
+            print("tab replace")
+            print(img_file)
+            img_file = img_file.replace(' ', '_')
+            print(img_file)
         # {'top': '49', 'left': '49', 'width': '193', 'height': '194'}
         for label_xml in img_xml:
             try:
@@ -67,7 +71,6 @@ if __name__ == '__main__':
             <part name="00" x="59" y="109" />
             ...
         img_dir: image dir
-
     Save:
         txt: label lines text(train text : test text = 90 : 10)
             - landmarkはそのまま
@@ -91,7 +94,7 @@ if __name__ == '__main__':
         tree = ET.parse(xml)
         labels_xml = tree.getroot()
     else:
-        print("error: please write xml path and img dir and datatype")
+        print("error: please write xml path, label num and img dir")
         exit()
 
     annotations = extract_annotations(labels_xml, label_num)
@@ -126,17 +129,18 @@ if __name__ == '__main__':
         exit()
 
     annotations = np.array(annotations)
-    train_annos, test_annos = train_test_split(annotations, test_size=0.01)
 
+    train_annos, test_annos = train_test_split(annotations, test_size=0.05)
+    """
     # save train text
-    save_path = xml[:-4] + "_train.txt"
+    save_path = xml[:-5] + "_train.txt"
     with open(save_path, mode='w') as f:
         for idx, anno in enumerate(train_annos):
             str_anno = " ".join(anno) + "\n"
             f.write(str_anno)
 
     # save test text
-    save_path = xml[:-4] + "_test.txt"
+    save_path = xml[:-5] + "_test.txt"
     with open(save_path, mode='w') as f:
         for idx, anno in enumerate(test_annos):
             str_anno = " ".join(anno) + "\n"
@@ -149,6 +153,5 @@ if __name__ == '__main__':
             str_anno = " ".join(anno) + "\n"
             f.write(str_anno)
     print("total num: ", idx)
-
     print("finish save text labels")
-    """
+

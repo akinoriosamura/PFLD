@@ -212,7 +212,7 @@ def main(args):
                     saver.export_meta_graph(metagraph_path)
                 print("save checkpoint: {}".format(checkpoint_path))
 
-                if epoch % 10 == 0 and epoch != 0:
+                if epoch % 10 == 0 and epoch != 0 and epoch > 39:
                     print("test start")
                     start = time.time()
                     test_ME, test_FR, test_loss = test(sess, list_ops, args)
@@ -417,7 +417,7 @@ def parse_arguments(argv):
     parser.add_argument('--file_list', type=str, default='data/train_data/list.txt')
     parser.add_argument('--test_list', type=str, default='data/test_data/list.txt')
     parser.add_argument('--seed', type=int, default=666)
-    parser.add_argument('--max_epoch', type=int, default=1000)
+    parser.add_argument('--max_epoch', type=int, default=10000)
     parser.add_argument('--image_size', type=int, default=112)
     parser.add_argument('--num_labels', type=int, default=98)
     parser.add_argument('--image_channels', type=int, default=3)
@@ -425,7 +425,7 @@ def parse_arguments(argv):
     parser.add_argument('--pretrained_model', type=str, default=None)
     parser.add_argument('--model_dir', type=str, default='models1/model_test')
     parser.add_argument('--learning_rate', type=float, default=0.001)
-    parser.add_argument('--lr_epoch', type=str, default='20,40,60,80,100,500')
+    parser.add_argument('--lr_epoch', type=str, default='20,40,60,80,100,500,990,1010')
     parser.add_argument('--weight_decay', type=float, default=5e-5)
     parser.add_argument('--level', type=str, default='L5')
     parser.add_argument('--save_image_example', action='store_false')

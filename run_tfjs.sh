@@ -1,15 +1,15 @@
 #!/bin/bash
 phase=$1
 num_labels=68 # 20, 52
-depth_multi=0.75 # default = 1, like model complicated
+depth_multi=1 # default = 1, like model complicated
 num_quant=64
-save_model=models2/save_models/68/aux_tfjs_168_aug_clev2_grow_helen_wflw_preWFLW68
-file_list=/data/pcn_aug_clev2_grow_helen_wflw_68/rotated_train_aug_clev2_grow_helen_wflw_68/list.txt
-# test_list=/data/pcn_aug_clev2_grow_helen_wflw_68/rotated_test_aug_clev2_grow_helen_wflw_68/list.txt
-test_list=/data/prepro_dataset/test_moru_dataset/list.txt
-# test_list=data/rotated_test_growing_data/list.txt
-pre_model=models2/save_models/68/aux_tfjs_168_aug_clev2_grow_helen_wflw_preWFLW68
-out_dir=sam_morutest_aux_tfjs_168_aug_clev2_grow_helen_wflw_preWFLW68
+save_model=models2/save_models/68/sample_tfjs168
+file_list=./data/non_rotated_train_WFLW_68_data/list.txt
+# test_list=./data/rotated_test_COFW/list.txt
+# file_list=data/rotated_test_growing_data/list.txt
+test_list=data/test_moru_dataset/list.txt
+pre_model=models2/save_models/68/sample_tfjs168
+out_dir=sam_sample_tfjs168
 lr=0.0001
 is_augment=False  # True or False
 image_size=168

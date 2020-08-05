@@ -34,8 +34,9 @@ if __name__ == "__main__":
             cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (255, 0, 0), 1, 1)
             id = 1
             # import pdb; pdb.set_trace()
-            for x, y in landmarks:
-                cv2.circle(img, (x, y), 3, (0, 255, 0))
+            for land_id, (x, y) in enumerate(landmarks):
+                cv2.circle(img, (x, y), 1, (0, 255, 0))
+                cv2.putText(img, str(land_id), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.2, (255, 255, 255), thickness=1)
                 id += 1
             cv2.imwrite(os.path.join("checklabels", "show_labeled" + os.path.basename(img_name) + str(id) + ".jpg"), img)
     else:
@@ -52,8 +53,9 @@ if __name__ == "__main__":
             landmarks = np.asarray(landmarks * [h, w], np.int32)
             id = 1
             # import pdb; pdb.set_trace()
-            for x, y in landmarks:
+            for land_id, (x, y) in enumerate(landmarks):
                 cv2.circle(img, (x, y), 3, (0, 255, 0))
+                cv2.putText(img, str(land_id), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), thickness=1)
                 id += 1
             cv2.imwrite(os.path.join("checklabels", "show_labeled" + os.path.basename(img_path) + str(id) + ".jpg"), img)
 

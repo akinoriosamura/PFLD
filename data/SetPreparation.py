@@ -53,7 +53,7 @@ class ImageDate():
         #146: image path
         """
         if num_labels == 52:
-            if dataset == "WFLW":
+            if "WFLW" in dataset:
                 line = self.remove_unuse_land_98to52(line)
             else:
                 line = self.remove_unuse_land_68to52(line)
@@ -79,7 +79,7 @@ class ImageDate():
             if debug:
                 self.show_labels()
         elif num_labels == 68:
-            if dataset == "WFLW":
+            if "WFLW" in dataset:
                 line = self.remove_unuse_land_98to68(line)
             if len(line) != 147:
                 import pdb;pdb.set_trace()

@@ -88,7 +88,7 @@ if __name__ == '__main__':
             id += 1
 
     annotations = np.array(annotations)
-
+    """
     train_annos, test_annos = train_test_split(annotations, test_size=0.05)
 
     # save train text
@@ -112,4 +112,3 @@ if __name__ == '__main__':
             str_anno = " ".join(anno) + "\n"
             f.write(str_anno)
     print("finish save text labels")
-    """
