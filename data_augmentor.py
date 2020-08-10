@@ -20,30 +20,34 @@ class DataAugmentator(object):
             ])
         """
         self.seq = iaa.Sequential([
-            iaa.SomeOf((0, 2),
-            [
+            iaa.OneOf([
                 # change brightness of images (by -10 to 10 of original value
                 iaa.Add((-100, 100)),
                 # change brightness of images (by -10 to 10 of original value in each pixels)
-                #iaa.Add((-100, 100), per_channel=0.5),
+                iaa.Add((-100, 100), per_channel=0.5),
                 # change hue and saturation
                 iaa.AddToHueAndSaturation((-20, 20)),
                 # Convert each image to grayscale and then overlay the
                 # result with the original with random alpha. I.e. remove
                 # colors with varying strengths.
-                #iaa.Grayscale(alpha=(0.0, 1.0)),
+                iaa.Grayscale(alpha=(0.0, 1.0)),
                 # Strengthen or weaken the contrast in each image.
-                #iaa.ContrastNormalization((0.5, 1.5)),
+                iaa.ContrastNormalization((0.5, 1.5))
+            ]),
+            iaa.SomeOf((0, 3),
+            [
                 # add gaussian noise to images
-                #iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05*255)),
+                iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05*255)),
                 # Make some images brighter and some darker.
                 # In 20% of all cases, we sample the multiplier once per channel,
                 # which can end up changing the color of the images.
-                #iaa.Multiply((0.8, 1.2)),
+                iaa.Multiply((0.8, 1.2)),
                 iaa.CoarseDropout((0.10, 0.20), size_percent=(0.01, 0.02)),
-                #iaa.GaussianBlur(sigma=(0, 3.0)),
-                #iaa.Fliplr(0.4)
+                iaa.GaussianBlur(sigma=(0, 3.0))
             ]),
+            # horizontal flips
+            # in processing data, already flip randomly
+            # iaa.Fliplr(0.3)
         ])
         
     def show_img(self, img, land, state):
