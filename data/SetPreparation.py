@@ -289,6 +289,14 @@ class ImageDate():
                     landmark[:, 0] = 1 - landmark[:, 0]
                     landmark = landmark[mirror_idx]
                     imgT = cv2.flip(imgT, 1)
+                    # import pdb;pdb.set_trace()
+                    # print("mirror")
+                    # self.debug_num += 1
+                    # os.makedirs("sample_labels", exist_ok=True)
+                    # img_tmp = imgT.copy()
+                    # for x, y in (landmark * self.image_size + 0.5).astype(np.int32):
+                    #     cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
+                    # cv2.imwrite(os.path.join("sample_labels", "sample_" + str(self.debug_num) + ".jpg"), img_tmp)
 
                 if debug:
                     # 表示して確認
@@ -407,8 +415,12 @@ if __name__ == '__main__':
     landmarkTrainDir = config.get(section, 'landmarkTrainDir')
     landmarkTestDir = config.get(section, 'landmarkTestDir')
     landmarkTestName = config.get(section, 'landmarkTestName')
-    outTrainDir = config.get(section, 'outTrainDir')
-    outTestDir = config.get(section, 'outTestDir')
+    outTrainPath = config.get(section, 'outTrainDir')
+    outTestPath = config.get(section, 'outTestDir')
+    outTrainDirPath = os.path.dirname(outTrainPath)
+    outTrainDir = os.path.basename(outTrainPath)
+    outTestDirPath = os.path.dirname(outTestPath)
+    outTestDir = os.path.basename(outTestPath)
     if rotate=="rotate":
         print("rotate")
         outTrainDir = "rotated_" + outTrainDir
@@ -417,6 +429,9 @@ if __name__ == '__main__':
         print("non rotate")
         outTrainDir = "non_rotated_" + outTrainDir
         outTestDir = "non_rotated_" + outTestDir
+    outTrainDir = os.path.join(outTrainDirPath, outTrainDir)
+    outTestDir = os.path.join(outTestDirPath, outTestDir)
+
     image_size = int(config.get(section, 'ImageSize'))
     print(imageDirs)
     print(Mirror_file)
