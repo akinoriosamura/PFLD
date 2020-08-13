@@ -79,8 +79,8 @@ class ImageDate():
             if debug:
                 self.show_labels()
         elif num_labels == 68:
-            if "WFLW" in dataset:
-                line = self.remove_unuse_land_98to68(line)
+            # if "WFLW" in dataset:
+            #     line = self.remove_unuse_land_98to68(line)
             if len(line) != 147:
                 import pdb;pdb.set_trace()
             assert(len(line) == 147)
