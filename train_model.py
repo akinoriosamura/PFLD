@@ -4,9 +4,13 @@ from __future__ import division
 from __future__ import print_function
 from utils import train_model
 from pfld import create_model
+# from generate_data import DataLoader
+from generate_data_tfrecords import TfrecordsLoader
 from generate_data import DataLoader
 from data_augmentor import DataAugmentator
+import gc
 import time
+import random
 import math
 # import matplotlib.pyplot as plt
 import os
@@ -41,22 +45,43 @@ def main(args):
         os.makedirs(model_dir, exist_ok=True)
 
         # ============== get dataset ==============
+        # use tfrecord
         print("============== get dataloader ==============")
-        train_loader = DataLoader(args.file_list, args, "train", debug)
-        test_loader = DataLoader(args.test_list, args, "test", debug)
+        train_loader = TfrecordsLoader(args.file_list, args, "train", debug)
+        test_loader = TfrecordsLoader(args.test_list, args, "test", debug)
+        print("============ get tfrecord train data ===============")
+        train_loader.create_tfrecord()
+        num_train_file = train_loader.num_file
+        print("============ get tfrecord test data ===============")
+        test_loader.create_tfrecord()
+        num_test_file = test_loader.num_file
 
-        print("============ get train data ===============")
-        train_dataset, num_train_file = train_loader.get_dataset()
-        print("============ get test data ===============")
-        test_dataset, num_test_file = test_loader.get_dataset()
-
-        batch_train_dataset = train_dataset.batch(args.batch_size).repeat()
-        train_iterator = batch_train_dataset.make_one_shot_iterator()
-        train_next_element = train_iterator.get_next()
-
+        # run below in epoch for large dataset
+        # train_dataset = train_loader.get_tfrecords(train_tfrecord_path)
+        # batch_train_dataset = train_dataset.batch(args.batch_size).repeat()
+        # train_iterator = batch_train_dataset.make_one_shot_iterator()
+        # train_next_element = train_iterator.get_next()
+        test_dataset = test_loader.get_tfrecords(test_loader.records_list[0])
         batch_test_dataset = test_dataset.batch(args.batch_size).repeat()
         test_iterator = batch_test_dataset.make_one_shot_iterator()
         test_next_element = test_iterator.get_next()
+
+        # no use tfrecord
+        # print("============== get dataloader ==============")
+        # train_loader = DataLoader(args.file_list, args, "train", debug)
+        # test_loader = DataLoader(args.test_list, args, "test", debug)
+        # print("============ get train data ===============")
+        # train_dataset, num_train_file = train_loader.get_dataset()
+        # print("============ get test data ===============")
+        # test_dataset, num_test_file = test_loader.get_dataset()
+# 
+        # batch_train_dataset = train_dataset.batch(args.batch_size).repeat()
+        # train_iterator = batch_train_dataset.make_one_shot_iterator()
+        # train_next_element = train_iterator.get_next()
+# 
+        # batch_test_dataset = test_dataset.batch(args.batch_size).repeat()
+        # test_iterator = batch_test_dataset.make_one_shot_iterator()
+        # test_next_element = test_iterator.get_next()
 
         print('Total number of examples: {}'.format(num_train_file))
         print('Test number of examples: {}'.format(num_test_file))
@@ -64,9 +89,9 @@ def main(args):
         list_ops['num_train_file'] = num_train_file
         list_ops['num_test_file'] = num_test_file
 
-        list_ops['train_dataset'] = train_dataset
+        # list_ops['train_dataset'] = train_dataset
         list_ops['test_dataset'] = test_dataset
-        list_ops['train_next_element'] = train_next_element
+        # list_ops['train_next_element'] = train_next_element
         list_ops['test_next_element'] = test_next_element
 
         tf.set_random_seed(args.seed)
@@ -158,8 +183,8 @@ def main(args):
         save_params = tf.trainable_variables()
         saver = tf.train.Saver(save_params, max_to_keep=None)
 
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0)
-        sess = tf.Session(graph=g, config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=False, log_device_placement=False))
+        # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0)
+        sess = tf.Session(graph=g, config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=False))
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 
@@ -191,42 +216,67 @@ def main(args):
             train_write = tf.summary.FileWriter(log_dir, sess.graph)
 
             for epoch in range(epoch_start, args.max_epoch):
-                print("train start")
-                start = time.time()
-                train_L, train_L2 = train(sess, epoch_size, epoch, list_ops, args)
-                print("train time: {}" .format(time.time() - start))
+                # use tfrecords
+                print("get dataset start")
+                # import pdb;pdb.set_trace()
+                records_order = random.sample(train_loader.records_list, train_loader.num_records)
+                assert len(records_order) == train_loader.num_records
+                print("records order: ", records_order)
+                for record_id, target_train_tfrecord_path in enumerate(records_order):
+                    if record_id != 0:
+                        print("delete dataset memory ")
+                        del train_dataset
+                        del batch_train_dataset
+                        del train_iterator
+                        del train_next_element
+                        gc.collect()
+                    print("target_train_tfrecord_path : ", target_train_tfrecord_path)
+                    train_dataset = train_loader.get_tfrecords(target_train_tfrecord_path)
+                    batch_train_dataset = train_dataset.batch(args.batch_size).repeat()
+                    train_iterator = batch_train_dataset.make_one_shot_iterator()
+                    train_next_element = train_iterator.get_next()
 
-                summary, _, _ = sess.run(
-                    [
-                        merged,
-                        train_loss.assign(train_L),
-                        train_loss_l2.assign(train_L2)
-                    ]
-                )
-                train_write.add_summary(summary, epoch)
+                    list_ops['train_dataset'] = train_dataset
+                    list_ops['train_next_element'] = train_next_element
+                    list_ops['record_id'] = record_id
+                    list_ops['num_records'] = train_loader.num_records
 
-                checkpoint_path = os.path.join(model_dir, 'model.ckpt')
-                metagraph_path = os.path.join(model_dir, 'model.meta')
-                saver.save(sess, checkpoint_path, global_step=epoch, write_meta_graph=False)
-                if not os.path.exists(metagraph_path):
-                    saver.export_meta_graph(metagraph_path)
-                print("save checkpoint: {}".format(checkpoint_path))
-
-                if epoch % 10 == 0 and epoch != 0 and epoch > 39:
-                    print("test start")
+                    print("train start")
                     start = time.time()
-                    test_ME, test_FR, test_loss = test(sess, list_ops, args)
-                    print("test time: {}" .format(time.time() - start))
+                    train_L, train_L2 = train(sess, epoch_size, epoch, list_ops, args)
+                    print("train time: {}" .format(time.time() - start))
 
-                    summary, _, _, _ = sess.run(
+                    summary, _, _ = sess.run(
                         [
                             merged,
-                            test_mean_error.assign(test_ME),
-                            test_failure_rate.assign(test_FR),
-                            test_10_loss.assign(test_loss)
+                            train_loss.assign(train_L),
+                            train_loss_l2.assign(train_L2)
                         ]
                     )
                     train_write.add_summary(summary, epoch)
+
+                    checkpoint_path = os.path.join(model_dir, 'model.ckpt')
+                    metagraph_path = os.path.join(model_dir, 'model.meta')
+                    saver.save(sess, checkpoint_path, global_step=epoch, write_meta_graph=False)
+                    if not os.path.exists(metagraph_path):
+                        saver.export_meta_graph(metagraph_path)
+                    print("save checkpoint: {}".format(checkpoint_path))
+
+                    if epoch % 10 == 0 and epoch != 0 and epoch > 19:
+                        print("test start")
+                        start = time.time()
+                        test_ME, test_FR, test_loss = test(sess, list_ops, args)
+                        print("test time: {}" .format(time.time() - start))
+
+                        summary, _, _, _ = sess.run(
+                            [
+                                merged,
+                                test_mean_error.assign(test_ME),
+                                test_failure_rate.assign(test_FR),
+                                test_10_loss.assign(test_loss)
+                            ]
+                        )
+                        train_write.add_summary(summary, epoch)
 
 
 def train(sess, epoch_size, epoch, list_ops, args):
@@ -262,7 +312,7 @@ def train(sess, epoch_size, epoch, list_ops, args):
                                          list_ops['L2_loss']], feed_dict=feed_dict)
 
         if ((i + 1) % 10) == 0 or (i + 1) == epoch_size:
-            Epoch = 'Epoch:[{:<4}][{:<4}/{:<4}]'.format(epoch, i + 1, epoch_size)
+            Epoch = 'Epoch:[{:<4}][{:<4}/{:<4}][{:<4}/{:<4}]'.format(epoch, list_ops['record_id'] + 1, list_ops['num_records'], i + 1, epoch_size)
 
             Loss = 'Loss {:2.3f}\tL2_loss {:2.3f}'.format(loss, L2_loss)
             print('{}\t{}\t lr {:2.3}'.format(Epoch, Loss, lr))
