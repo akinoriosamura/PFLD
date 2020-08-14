@@ -130,6 +130,7 @@ def pfld_backbone(input, weight_decay, batch_norm_params, num_labels, depth_mult
             # 1*1*128
             s3 = slim.flatten(conv8)
             multi_scale = tf.concat([s1, s2, s3], 1)
+            print(multi_scale.name, multi_scale.get_shape())
             landmarks = slim.fully_connected(multi_scale, num_outputs=num_labels*2, activation_fn=None, scope='fc')
             print("last layer name")
             print(landmarks.name, landmarks.get_shape())

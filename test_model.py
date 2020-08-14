@@ -2,7 +2,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from pfld import create_model
+# from pfld import create_model
+from XinNing2020 import create_model
 from generate_data import DataLoader
 
 
@@ -43,7 +44,9 @@ def main(args):
             None, args.num_labels * 2), name='landmark_batch')
 
         phase_train_placeholder = tf.constant(False, name='phase_train')
-        landmarks_pre, _, _ = create_model(
+        # landmarks_pre, _, _ = create_model(
+        #     image_batch, landmark_batch, phase_train_placeholder, args)
+        landmarks_pre, _, _, _ = create_model(
             image_batch, landmark_batch, phase_train_placeholder, args)
 
         save_params = tf.trainable_variables()

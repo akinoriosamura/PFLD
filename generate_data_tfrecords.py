@@ -12,13 +12,13 @@ class TfrecordsLoader():
     def __init__(self, file_list, args, phase, debug=False):
         print("labels; ", args.num_labels)
         time.sleep(3)
-        self.num_records = 40
+        self.num_records = 2
         self.file_list = file_list
         self.file_base = os.path.basename(os.path.dirname(self.file_list))
         self.args = args
         self.tfrecords_dir = os.path.join(self.args.tfrecords_dir, self.file_base)
         self.phase = phase
-        self.file_list, self.landmarks, self.attributes, self.euler_angles = self.gen_data(self.file_list, self.args.num_labels)
+        self.filenames, self.landmarks, self.attributes, self.euler_angles = self.gen_data(self.file_list, self.args.num_labels)
         self.images_shape = [1, self.args.image_size, self.args.image_size, 3]
         self.landmarks_shape = list(self.landmarks.shape)
         self.attributes_shape = list(self.attributes.shape)
@@ -26,13 +26,14 @@ class TfrecordsLoader():
 
         if debug:
             n = self.args.batch_size * 10
-            file_list = self.file_list[:n]
+            file_list = self.filenames[:n]
             landmarks = self.landmarks[:n]
             attributes = self.attributes[:n]
             euler_angles = self.euler_angles[:n]
         self.images = None
-        self.num_file = len(self.file_list)
+        self.num_file = len(self.filenames)
         self.records_list = []
+        self.meanShape = None
         self.dataaugmentor = DataAugmentator(self.args.num_labels)
 
 
@@ -129,7 +130,7 @@ class TfrecordsLoader():
             os.makedirs(self.tfrecords_dir, exist_ok=True)
             if self.phase == 'train':
                 num_record_files = math.ceil(self.num_file / self.num_records)
-                _file_list = np.random.permutation(self.file_list)
+                _file_list = np.random.permutation(self.filenames)
                 for id_record in range(0, self.num_records):
                     i_st = id_record * num_record_files
                     if i_st + num_record_files < self.num_file:
@@ -143,7 +144,7 @@ class TfrecordsLoader():
                     self.records_list.append(tfrecord_path)
             elif self.phase =='test':
                 tfrecord_base_path = self.phase + ".tfrecords"
-                tfrecord_path = self.write_tfrecord(self.file_list, tfrecord_base_path)
+                tfrecord_path = self.write_tfrecord(self.filenames, tfrecord_base_path)
                 self.records_list.append(tfrecord_path)
 
         print("records_list: ",  self.records_list)
@@ -170,6 +171,14 @@ class TfrecordsLoader():
 
         return dataset
 
+    def calMeanShape(self):
+        meanShape = np.zeros(self.landmarks[0].shape)
+        for i, land in enumerate(self.landmarks):
+            meanShape = np.add(meanShape, land)
+            
+        self.meanShape = (meanShape / len(self.landmarks))
+
+        return self.meanShape
 
 def save_anno(imgs, landmarks, type):
     for i in range(10):

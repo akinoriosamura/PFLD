@@ -1,19 +1,19 @@
 #!/bin/bash
 phase=$1
 num_labels=68 # 20, 52
-depth_multi=0.75 # default = 1, like model complicated
+depth_multi=1 # default = 1, like model complicated
 num_quant=64
-save_model=models2/save_models/68/aug_all_nohard_68_prebaobab0716
-file_list=/data/prepro_dataset/rotated_train_aug_300wCofwMenpoMultiXm2vtsWflwlGrow_68/list.txt
+save_model=models2/save_models/68/sample_xin_pfld
+file_list=data/rotated_train_WFLW_68_data/list.txt
 # test_list=./data/rotated_test_COFW/list.txt
 # file_list=data/non_rotated_train_WFLW_68_data/list.txt
 test_list=data/test_moru_dataset/list.txt
-pre_model=models2/save_models/68/dm075_im84_baobab0716_pre_baobab0604
-out_dir=sam_aug_all_nohard_68_prebaobab0716
+pre_model=models2/save_models/68/sample_xin_pfld
+out_dir=sam_sample_xin_pfld
 lr=0.0001
 is_augment=False  # True or False
-image_size=84
-batch_size=256
+image_size=112
+batch_size=128
 
 # --pretrained_model=${pre_model} \
 # CUDA_VISIBLE_DEVICES='' \
