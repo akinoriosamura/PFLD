@@ -3,11 +3,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from utils import train_model
-# from pfld import create_model
-from XinNing2020 import create_model
+from pfld import create_model
+# from XinNing2020 import create_model
 # from generate_data import DataLoader
-from generate_data_tfrecords import TfrecordsLoader
-from generate_data import DataLoader
+from generate_data_xin_tfrecords import TfrecordsLoader
 from data_augmentor import DataAugmentator
 import gc
 import time
@@ -48,8 +47,8 @@ def main(args):
         # ============== get dataset ==============
         # use tfrecord
         print("============== get dataloader ==============")
-        train_loader = TfrecordsLoader(args.file_list, args, "train", debug)
-        test_loader = TfrecordsLoader(args.test_list, args, "test", debug)
+        train_loader = TfrecordsLoader(args.file_list, args, "train", "pfld", debug)
+        test_loader = TfrecordsLoader(args.test_list, args, "test", "pfld", debug)
         print("============ get tfrecord train data ===============")
         train_loader.create_tfrecord()
         num_train_file = train_loader.num_file
@@ -58,10 +57,6 @@ def main(args):
         num_test_file = test_loader.num_file
 
         # run below in epoch for large dataset
-        # train_dataset = train_loader.get_tfrecords(train_tfrecord_path)
-        # batch_train_dataset = train_dataset.batch(args.batch_size).repeat()
-        # train_iterator = batch_train_dataset.make_one_shot_iterator()
-        # train_next_element = train_iterator.get_next()
         test_dataset = test_loader.get_tfrecords(test_loader.records_list[0])
         batch_test_dataset = test_dataset.batch(args.batch_size).repeat()
         test_iterator = batch_test_dataset.make_one_shot_iterator()
@@ -123,14 +118,10 @@ def main(args):
         list_ops['phase_train_placeholder'] = phase_train_placeholder
 
         print('Building training graph.')
-        mean_shape = test_loader.calMeanShape()
-        list_ops['mean_shape'] = mean_shape
-        # total_loss, landmarks, heatmaps_loss, heatmaps= create_model(image_batch, landmark_batch,\
+        # total_loss, landmarks, euler_angles_pre= create_model(image_batch, landmark_batch,\
         #                                                                                phase_train_placeholder, args)
-        # landmarks_pre, landmarks_loss, euler_angles_pre = create_model(image_batch, landmark_batch,
-        #                                                                phase_train_placeholder, args)
-        landmarks_pre, landmarks_loss, heatmap, _heat_values = create_model(image_batch, landmark_batch,
-                                                                       phase_train_placeholder, args, mean_shape)
+        landmarks_pre, landmarks_loss, euler_angles_pre = create_model(image_batch, landmark_batch,
+                                                                       phase_train_placeholder, args)
         attributes_w_n = tf.to_float(attribute_batch[:, 1:6])
         # _num = attributes_w_n.shape[0]
         mat_ratio = tf.reduce_mean(attributes_w_n, axis=0)
@@ -140,9 +131,9 @@ def main(args):
         list_ops['attributes_w_n_batch'] = attributes_w_n
 
         L2_loss = tf.add_n(tf.losses.get_regularization_losses())
-        # _sum_k = tf.reduce_sum(tf.map_fn(lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
+        _sum_k = tf.reduce_sum(tf.map_fn(lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
         loss_sum = tf.reduce_sum(tf.square(landmark_batch - landmarks_pre), axis=1)
-        loss_sum = tf.reduce_mean(loss_sum)# * _sum_k)#  * attributes_w_n)
+        loss_sum = tf.reduce_mean(loss_sum)#  * _sum_k)#  * attributes_w_n)
         loss_sum += L2_loss
 
         # quantize
@@ -168,8 +159,6 @@ def main(args):
         train_op, lr_op = train_model(loss_sum, global_step, num_train_file, args)
 
         list_ops['landmarks'] = landmarks_pre
-        list_ops['heatmap'] = heatmap
-        list_ops['_heat_values'] = _heat_values
         list_ops['L2_loss'] = L2_loss
         list_ops['loss'] = loss_sum
         list_ops['train_op'] = train_op
@@ -315,8 +304,8 @@ def train(sess, epoch_size, epoch, list_ops, args):
             list_ops['attributes_w_n_batch']: attributes_w_n
         }
         # import pdb;pdb.set_trace()
-        loss, _, lr, L2_loss, _heat_values = sess.run([list_ops['loss'], list_ops['train_op'], list_ops['lr_op'],
-                                         list_ops['L2_loss'], list_ops['_heat_values']], feed_dict=feed_dict)
+        loss, _, lr, L2_loss = sess.run([list_ops['loss'], list_ops['train_op'], list_ops['lr_op'],
+                                         list_ops['L2_loss']], feed_dict=feed_dict)
 
         if ((i + 1) % 10) == 0 or (i + 1) == epoch_size:
             Epoch = 'Epoch:[{:<4}][{:<4}/{:<4}][{:<4}/{:<4}]'.format(epoch, list_ops['record_id'] + 1, list_ops['num_records'], i + 1, epoch_size)
@@ -329,10 +318,6 @@ def train(sess, epoch_size, epoch, list_ops, args):
 
 def test(sess, list_ops, args):
     image_batch, landmarks_batch, attribute_batch, euler_batch = list_ops['test_next_element']
-
-    sample_path = os.path.join(args.model_dir, 'HeatMaps')
-    if not os.path.exists(sample_path):
-        os.mkdir(sample_path)
 
     loss_sum = 0
     landmark_error = 0
@@ -350,8 +335,7 @@ def test(sess, list_ops, args):
             list_ops['attribute_batch']: attributes,
             list_ops['phase_train_placeholder']: False
         }
-        import pdb;pdb.set_trace()
-        pre_landmarks, heatmap, _heat_values = sess.run([list_ops['landmarks'], list_ops['heatmap'], list_ops['_heat_values']], feed_dict=feed_dict)
+        pre_landmarks = sess.run(list_ops['landmarks'], feed_dict=feed_dict)
 
         diff = pre_landmarks - landmarks
         loss = np.sum(diff * diff)
@@ -425,16 +409,6 @@ def test(sess, list_ops, args):
     print(error_str + '\n' + failure_rate_str + '\n')
 
     return landmark_error_norm, failure_rate_norm, loss
-
-def heatmap2landmark(heatmap):
-    landmark = []
-    h, w, c = heatmap.shape
-    for i in range(c):
-        m, n = divmod(np.argmax(heatmap[i]), w)
-        landmark.append(n / w)
-        landmark.append(m / h)
-    return landmark
-
 
 def save_image_example(sess, list_ops, args):
     save_nbatch = 10

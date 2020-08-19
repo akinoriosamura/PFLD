@@ -3,13 +3,13 @@ phase=$1
 num_labels=68 # 20, 52
 depth_multi=1 # default = 1, like model complicated
 num_quant=64
-save_model=models2/save_models/68/sample_xin
-file_list=data/non_rotated_train_WFLW_68_data/list.txt
-# test_list=./data/rotated_test_COFW/list.txt
+save_model=models2/save_models/68/sam_xin_300W
+file_list=data/rotated_train_300W/list.txt
+test_list=./data/rotated_test_300W/list.txt
 # file_list=data/test_moru_dataset/list.txt
-test_list=data/test_moru_dataset/list.txt
-pre_model=models2/save_models/68/sample_xin
-out_dir=sam_sample_xin_
+# test_list=data/test_moru_dataset/list.txt
+pre_model=models2/save_models/68/sam_xin_300W
+out_dir=sam_xin_300W
 lr=0.0001
 is_augment=False  # True or False
 image_size=112
@@ -22,7 +22,7 @@ export XLA_FLAGS=--xla_hlo_profile
 
 if [ ${phase} = "pretrain" ]; then
     echo "run pretrain"
-    python -u train_model.py --model_dir=${save_model} \
+    python -u train_model_xin.py --model_dir=${save_model} \
                                 --pretrained_model=${pre_model} \
                                 --file_list=${file_list} \
                                 --test_list=${test_list} \
@@ -37,7 +37,7 @@ if [ ${phase} = "pretrain" ]; then
                                 --is_augment=${is_augment}
 elif [ ${phase} = "train" ]; then
     echo "run train"
-    python -u train_model.py --model_dir=${save_model} \
+    python -u train_model_xin.py --model_dir=${save_model} \
                                 --file_list=${file_list} \
                                 --test_list=${test_list} \
                                 --num_labels=${num_labels} \
@@ -65,7 +65,7 @@ elif [ ${phase} = "save" ]; then
 
 elif [ "${phase}" = 'test' ]; then
     echo "run test"
-    python -u test_model.py --pretrained_model=${pre_model} \
+    python -u test_model_xin.py --pretrained_model=${pre_model} \
                             --test_list=${test_list} \
                             --num_labels=${num_labels} \
                             --learning_rate=${lr} \

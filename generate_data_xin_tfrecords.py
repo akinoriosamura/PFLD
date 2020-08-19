@@ -9,7 +9,7 @@ import os
 from data_augmentor import DataAugmentator
 
 class TfrecordsLoader():
-    def __init__(self, file_list, args, phase, debug=False):
+    def __init__(self, file_list, args, phase, model_type, debug=False):
         print("labels; ", args.num_labels)
         time.sleep(3)
         self.num_records = 2
@@ -22,14 +22,24 @@ class TfrecordsLoader():
         self.tfrecords_dir = os.path.join(self.args.tfrecords_dir, self.file_base)
         self.dataaugmentor = DataAugmentator(self.args.num_labels)
         self.phase = phase
+        self.model_type = model_type
+        self.sumShape = None
+        self.meanShape = None
         self.filenames = None
         self.landmarks = None
         self.attributes = None
         self.euler_angles = None
-        self.images_shape = None
-        self.landmarks_shape = None
-        self.attributes_shape = None
-        self.euler_angles_shape = None
+        line = self.lines[0].strip().split()
+        landmark = line[1:self.args.num_labels*2+1]  # 1:197
+        attribute = line[self.args.num_labels*2+1:self.args.num_labels*2+7]  # 197:203
+        euler_angle = line[self.args.num_labels*2+7:self.args.num_labels*2+10]  # 203:206
+        landmark = np.asarray(landmark, dtype=np.float32)
+        attribute = np.asarray(attribute, dtype=np.int32)
+        euler_angle = np.asarray(euler_angle, dtype=np.float32)
+        self.images_shape = [self.args.image_size, self.args.image_size, 3]
+        self.landmarks_shape = landmark.shape
+        self.attributes_shape = attribute.shape
+        self.euler_angles_shape = euler_angle.shape
         self.images = None
         self.records_list = []
         self.meanShape = None
@@ -51,13 +61,20 @@ class TfrecordsLoader():
             attributes.append(attribute)
             euler_angles.append(euler_angle)
         self.filenames = np.asarray(filenames, dtype=np.str)
-        self.landmarks = np.asarray(landmarks, dtype=np.float32)
+        if self.model_type == 'pfld':
+            print(" get normalized landmark in pfld")
+            self.landmarks = np.asarray(landmarks, dtype=np.float32)
+        elif self.model_type == 'xin':
+            print(" get scale landmark in xin")
+            self.landmarks = np.asarray(landmarks, dtype=np.float32)# * self.args.image_size
+            lands = self.landmarks.copy()
+            for land in lands:
+                if self.sumShape is None:
+                    self.sumShape = land
+                else:
+                    self.sumShape += land
         self.attributes = np.asarray(attributes, dtype=np.int32)
         self.euler_angles = np.asarray(euler_angles, dtype=np.float32)
-        self.images_shape = [1, self.args.image_size, self.args.image_size, 3]
-        self.landmarks_shape = list(self.landmarks.shape)
-        self.attributes_shape = list(self.attributes.shape)
-        self.euler_angles_shape = list(self.euler_angles.shape)
 
     def make_example(self, image, landmark, attribute, euler_angle):
         return tf.train.Example(features=tf.train.Features(feature={
@@ -78,17 +95,20 @@ class TfrecordsLoader():
         def _parse_data(fname):
             image = cv2.imread(fname)
             image = cv2.resize(image, (self.args.image_size, self.args.image_size))
-
             return image
 
         def _normalize(image):
             image = image.astype(np.float32)
-            image = image / 256.0
-
+            if self.model_type == 'pfld':
+                # print("normalizetion: / 256 in pfld")
+                image = image / 256.0
+            elif self.model_type == 'xin':
+                # print("normalizetion: -127.5 / 127.5 in xin")
+                image = (image - 127.5) / 127.5
             return image
+
         self.images = np.array(list(map(_parse_data, self.filenames)))
         print("loaded daatset in np")
-        self.images_shape = list(self.images.shape)
         o_images = self.images
         o_landmarks = self.landmarks
         # import pdb;pdb.set_trace()
@@ -101,8 +121,8 @@ class TfrecordsLoader():
         else:
             print("======= not augment =========")
             tfrecord_path = os.path.join(self.tfrecords_dir, ("unaugment_" + tfrecord_base_path))
-        save_anno(o_images, o_landmarks, "test")
-        #save_anno(self.images, (self.landmarks), "aug")
+        self.save_anno(o_images, o_landmarks, "test")
+        #self.save_anno(self.images, (self.landmarks), "aug")
 
         self.images = np.array(list(map(_normalize, self.images)))
         self.write_one_tfrecord(tfrecord_path)
@@ -149,16 +169,16 @@ class TfrecordsLoader():
         print("records_list: ",  self.records_list)
 
     def parse_function(self, example_proto):
-        features = {"image": tf.FixedLenFeature(self.images_shape[1:], tf.float32),
-                "landmark": tf.FixedLenFeature(self.landmarks_shape[1:], tf.float32),
-                "attribute": tf.FixedLenFeature(self.attributes_shape[1:], tf.float32),
-                "euler_angle": tf.FixedLenFeature(self.euler_angles_shape[1:], tf.float32)}
+        features = {"image": tf.FixedLenFeature(self.images_shape, tf.float32),
+                "landmark": tf.FixedLenFeature(self.landmarks_shape, tf.float32),
+                "attribute": tf.FixedLenFeature(self.attributes_shape, tf.float32),
+                "euler_angle": tf.FixedLenFeature(self.euler_angles_shape, tf.float32)}
 
         parsed_features = tf.parse_single_example(example_proto, features)
+
         return parsed_features['image'], parsed_features['landmark'], parsed_features['attribute'], parsed_features['euler_angle']
 
     def get_tfrecords(self, tfrecord_path):
-        import pdb;pdb.set_trace()
         # https://datascience.stackexchange.com/questions/16318/what-is-the-benefit-of-splitting-tfrecord-file-into-shards
         print("get from : ", tfrecord_path)
         dataset = tf.data.TFRecordDataset(
@@ -171,19 +191,51 @@ class TfrecordsLoader():
 
         return dataset
 
-def save_anno(imgs, landmarks, type):
-    import pdb;pdb.set_trace()
-    for i in range(10):
-        img = imgs[i].copy()
-        lands = landmarks[i].copy()
-        h, w, _ = img.shape
-        lands = lands.reshape(-1, 2)
-        lands = np.asarray(lands * [h, w], np.int32)
-        for land_id, (x, y) in enumerate(lands):
-            cv2.circle(img, (x, y), 1, (0, 255, 0))
-            # cv2.putText(img, str(land_id), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.1, (255, 255, 255), thickness=1)
-        cv2.imwrite("./img_" + str(i) + type + ".jpg", img)
-    print("finish save anno")
+    def calMeanShape(self):
+        mf_path = os.path.join(self.tfrecords_dir, "mean_face_shape.txt")
+        if os.path.exists(mf_path):
+            with open(mf_path, mode='r') as mf:
+                _meanShape = mf.readline()
+                _meanShape = _meanShape.split(" ")
+                self.meanShape = np.array([float(mf) for mf in _meanShape])
+        else:
+            self.meanShape = (self.sumShape / self.num_file)
+            # save mean shape txt
+            with open(mf_path, mode='w') as mf:
+                ms_str_list = [str(ms) for ms in self.meanShape.tolist()]
+                ms_str = " ".join(ms_str_list)
+                mf.write(ms_str)
+            # save mean face demo
+            lands = self.meanShape.reshape(-1, 2) * self.args.image_size
+            lands = np.asarray(lands, np.int32)
+            img_tmp = self.images[10].copy()
+            # print("normalizetion: -127.5 / 127.5 in xin")
+            img_tmp = (img_tmp * 127.5) + 127.5
+            # img_tmp = (img_tmp * 256)
+            for land_id, (x, y) in enumerate(lands):
+                cv2.circle(img_tmp, (x, y), 1, (0, 255, 0))
+                # cv2.putText(img_tmp, str(land_id), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.1, (255, 255, 255), thickness=1)
+            cv2.imwrite("./img_mean_shape.jpg", img_tmp)
+
+    def save_anno(self, imgs, landmarks, type):
+        # import pdb;pdb.set_trace()
+        for i in range(10):
+            img = imgs[i].copy()
+            lands = landmarks[i].copy()
+            h, w, _ = img.shape
+            lands = lands.reshape(-1, 2)
+            if self.model_type == 'pfld':
+                # print(" scale: h, w in save anno in pfld")
+                lands = np.asarray(lands * [h, w], np.int32)
+            elif self.model_type == 'xin':
+                # print(" no scale in save anno in xin")
+                lands = np.asarray(lands * [h, w], np.int32)
+                # lands = np.asarray(lands, np.int32)
+            for land_id, (x, y) in enumerate(lands):
+                cv2.circle(img, (x, y), 1, (0, 255, 0))
+                # cv2.putText(img, str(land_id), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.1, (255, 255, 255), thickness=1)
+            cv2.imwrite("./img_" + str(i) + type + ".jpg", img)
+        print("finish save anno")
 
 if __name__ == '__main__':
     file_list = 'data/train_data/list.txt'

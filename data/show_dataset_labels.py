@@ -54,8 +54,8 @@ if __name__ == "__main__":
             id = 1
             # import pdb; pdb.set_trace()
             for land_id, (x, y) in enumerate(landmarks):
-                cv2.circle(img, (x, y), 3, (0, 255, 0))
-                cv2.putText(img, str(land_id), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), thickness=1)
+                cv2.circle(img, (x, y), 1, (0, 255, 0))
+                cv2.putText(img, str(land_id), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.2, (255, 255, 255), thickness=1)
                 id += 1
             cv2.imwrite(os.path.join("checklabels", "show_labeled" + os.path.basename(img_path) + str(id) + ".jpg"), img)
 
