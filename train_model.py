@@ -6,7 +6,7 @@ from utils import train_model
 from pfld import create_model
 # from XinNing2020 import create_model
 # from generate_data import DataLoader
-from generate_data_xin_tfrecords import TfrecordsLoader
+from generate_data_tfrecords import TfrecordsLoader
 from data_augmentor import DataAugmentator
 import gc
 import time

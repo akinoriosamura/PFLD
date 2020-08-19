@@ -22,7 +22,7 @@ export XLA_FLAGS=--xla_hlo_profile
 
 if [ ${phase} = "pretrain" ]; then
     echo "run pretrain"
-    python -u train_model_xin.py --model_dir=${save_model} \
+    python -u train_model_tf2.py --model_dir=${save_model} \
                                 --pretrained_model=${pre_model} \
                                 --file_list=${file_list} \
                                 --test_list=${test_list} \
@@ -37,7 +37,7 @@ if [ ${phase} = "pretrain" ]; then
                                 --is_augment=${is_augment}
 elif [ ${phase} = "train" ]; then
     echo "run train"
-    python -u train_model_xin.py --model_dir=${save_model} \
+    python -u train_model_tf2.py --model_dir=${save_model} \
                                 --file_list=${file_list} \
                                 --test_list=${test_list} \
                                 --num_labels=${num_labels} \

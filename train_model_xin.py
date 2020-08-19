@@ -6,7 +6,7 @@ from utils import train_model
 # from pfld import create_model
 from XinNing2020 import create_model
 # from generate_data import DataLoader
-from generate_data_xin_tfrecords import TfrecordsLoader
+from generate_data_tfrecords import TfrecordsLoader
 from data_augmentor import DataAugmentator
 import gc
 import time
@@ -314,10 +314,23 @@ def train(sess, epoch_size, epoch, list_ops, args):
             list_ops['attributes_w_n_batch']: attributes_w_n
         }
         # import pdb;pdb.set_trace()
+        # stage1: model time no heatmap: 0.019s
+        # stage1: model time with heatmap: 1.5s
+        # stage2: model time no heatmap: 0.019s
+        start = time.time()
         loss, _, lr, L2_loss, _heat_values = sess.run([list_ops['loss'], list_ops['train_op'], list_ops['lr_op'],
                                          list_ops['L2_loss'], list_ops['_heat_values']], feed_dict=feed_dict) #, options=list_ops['run_options'], run_metadata=list_ops['run_metadata'])
+        print("model time: {}" .format(time.time() - start))
         # import pdb;pdb.set_trace()
-        cv2.imwrite("./test_heatmap.jpg", _heat_values[1][0] / np.max(_heat_values[1][0]) * 256)
+        # cv2.imwrite("./test_heatmap.jpg", _heat_values[1][0] / np.max(_heat_values[1][0]) * 256)
+        # variables_names = [v.name for v in tf.trainable_variables()]
+        # values = sess.run(variables_names)
+        # for k, v in zip(variables_names, values):
+        #     print("Variable: ", k)
+        #     print("Shape: ", v.shape)
+        #     # print(v)
+        # import pdb;pdb.set_trace()
+
         if ((i + 1) % 10) == 0 or (i + 1) == epoch_size:
             Epoch = 'Epoch:[{:<4}][{:<4}/{:<4}][{:<4}/{:<4}]'.format(epoch, list_ops['record_id'] + 1, list_ops['num_records'], i + 1, epoch_size)
 

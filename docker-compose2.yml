@@ -1,18 +1,18 @@
 version: '2.3'
 services:
-  pfld-tf-gpu-1-14:
+  pfld-tf-gpu-2:
     stdin_open: true
     tty: true
     command: /bin/bash
     build:
       context: .
-      dockerfile: Dockerfile1
-    container_name: pfld-tf-gpu-1-14
+      dockerfile: Dockerfile2
+    container_name: pfld-tf-gpu-2
     volumes:
       - ./:/usr/src/app
       - /data:/data
     runtime: nvidia
     ports:
-      - 9999:9999
+      - 10000:10000
     environment:
       - NVIDIA_VISIBLE_DEVICES=all

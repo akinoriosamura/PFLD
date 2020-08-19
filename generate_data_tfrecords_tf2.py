@@ -169,12 +169,12 @@ class TfrecordsLoader():
         print("records_list: ",  self.records_list)
 
     def parse_function(self, example_proto):
-        features = {"image": tf.FixedLenFeature(self.images_shape, tf.float32),
-                "landmark": tf.FixedLenFeature(self.landmarks_shape, tf.float32),
-                "attribute": tf.FixedLenFeature(self.attributes_shape, tf.float32),
-                "euler_angle": tf.FixedLenFeature(self.euler_angles_shape, tf.float32)}
+        features = {"image": tf.io.FixedLenFeature(self.images_shape, tf.float32),
+                "landmark": tf.io.FixedLenFeature(self.landmarks_shape, tf.float32),
+                "attribute": tf.io.FixedLenFeature(self.attributes_shape, tf.float32),
+                "euler_angle": tf.io.FixedLenFeature(self.euler_angles_shape, tf.float32)}
 
-        parsed_features = tf.parse_single_example(example_proto, features)
+        parsed_features = tf.io.parse_single_example(example_proto, features)
 
         return parsed_features['image'], parsed_features['landmark'], parsed_features['attribute'], parsed_features['euler_angle']
 

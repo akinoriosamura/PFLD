@@ -48,6 +48,14 @@ def HeatMap(output, _in, num_labels):
 
     return heatmap, [landmark, heatmap]
 
+def _HeatMap(output, _in, num_labels):
+    # ?*136 / transform / ?*112*112*1
+    heatmap = _in[:,:,:,0]
+    heatmap = tf.expand_dims(heatmap, -1, name="heatmap")
+    print(heatmap.name, heatmap.get_shape())
+
+    return heatmap, []
+
 def XinNingNetwork1(input, is_training, weight_decay, batch_norm_params, num_labels, depth_multi, min_depth=8):
     print("labels; ", num_labels)
     time.sleep(3)
@@ -67,7 +75,7 @@ def XinNingNetwork1(input, is_training, weight_decay, batch_norm_params, num_lab
             normalizer_fn=slim.batch_norm,
             normalizer_params=batch_norm_params,
             padding='SAME',
-            trainable=is_training
+            # trainable=is_training
             ):
             print('PFLD input shape({}): {}'.format(input.name, input.get_shape()))
             # 112*112*3(1) / conv3*3 / c:16,n:1,s:2
@@ -112,11 +120,11 @@ def XinNingNetwork1(input, is_training, weight_decay, batch_norm_params, num_lab
             output_1 = slim.fully_connected(flattened_1, num_outputs=num_labels*2, scope='fc_1')
             print(output_1.name, output_1.get_shape())
             # 1*136 / transform / 112*112*1
-            heatmap, _heat_values = HeatMap(output_1, input, num_labels)
+            heatmap, _heat_values = _HeatMap(output_1, input, num_labels)
             print(heatmap.name, heatmap.get_shape())
             print("=== finish stage 1 ===")
 
-            return heatmap, _heat_values
+            return output_1, heatmap, _heat_values
 
 
 def XinNingNetwork2(input, heatmap, is_training, weight_decay, batch_norm_params, num_labels, depth_multi, min_depth=8):
@@ -138,7 +146,7 @@ def XinNingNetwork2(input, heatmap, is_training, weight_decay, batch_norm_params
             normalizer_fn=slim.batch_norm,
             normalizer_params=batch_norm_params,
             padding='SAME',
-            trainable=is_training
+            # trainable=is_training
             ):
             print('PFLD input shape({}): {}'.format(input.name, input.get_shape()))
             print("=== start stage 2 ===")
@@ -201,15 +209,21 @@ def create_model(input, landmark, phase_train, args, mean_shape=None):
         'epsilon': 0.001,
         'updates_collections': None,  # tf.GraphKeys.UPDATE_OPS,
         'variables_collections': [tf.GraphKeys.TRAINABLE_VARIABLES],
-        'is_training': phase_train
+        'is_training': phase_train,
+        'trainable': phase_train
     }
+    # trainableはbatch_normの内部にあるvariablesをGraphKeys.TRAINABLE_VARIABLESに登録するかどうかを制御するためのboolパラメーターなのに対して、
+    # is_trainingはmoving_meanやmoving_varianceの挙動に関するboolパラメーターです。どちらもデフォルトでTrueですが、学習以外の時は明示的にFalseを設定する必要があります。
+    # 特にis_trainingがTrueのままの場合、同じ入力に対してbatch_normが毎回違う出力をしてしまい、モデルの再現性がなくなる場合があるので注意が必要です。
 
     landmark_dim = int(landmark.get_shape()[-1])
     print("labels; ", args.num_labels)
     time.sleep(3)
     stage1_training = True
+    # if not stage1_training:
+    #     batch_norm_params['is_training'] = stage1_training
     stage2_training = True
-    heatmap, _heat_values = XinNingNetwork1(input, stage1_training, args.weight_decay, batch_norm_params, args.num_labels, args.depth_multi)
+    _, heatmap, _heat_values = XinNingNetwork1(input, stage1_training, args.weight_decay, batch_norm_params, args.num_labels, args.depth_multi)
     landmarks_out = XinNingNetwork2(input, heatmap, stage2_training, args.weight_decay, batch_norm_params, args.num_labels, args.depth_multi)
     # loss
     # landmarks_pre = tf.map_fn(lambda x: tf.add(x, tf.cast(tf.constant(mean_shape), dtype=tf.float32)), landmarks_out)
