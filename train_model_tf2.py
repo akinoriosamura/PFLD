@@ -11,38 +11,10 @@ import os
 from XinNing2020_tf2 import XinNingNetwork
 import tensorflow as tf
 from generate_data_tfrecords_tf2 import TfrecordsLoader
-from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten
+from tensorflow.keras.layers import Input
 from tensorflow.keras import Model
 tf.keras.backend.set_floatx('float32')
 # from pfld import create_model
-
-
-class MyModel(Model):
-    def __init__(self):
-        super(MyModel, self).__init__()
-        self.d0 = Conv2D(16, 3, padding='valid', activation='relu',
-                         input_shape=(112, 112, 3), kernel_regularizer=tf.keras.regularizers.l2(0.001))
-        self.d1 = MaxPooling2D()
-        self.d2 = Conv2D(16, 3, padding='valid', activation='relu',
-                         kernel_regularizer=tf.keras.regularizers.l2(0.001))
-        self.d3 = MaxPooling2D()
-        self.flat = Flatten()
-        self.d4_1 = Dense(
-            136, kernel_regularizer=tf.keras.regularizers.l2(0.001))
-        self.d4_2 = Dense(3, activation='softmax',
-                          kernel_regularizer=tf.keras.regularizers.l2(0.001))
-
-    def call(self, x):
-        x = self.d0(x)
-        x = self.d1(x)
-        x = self.d2(x)
-        x = self.d3(x)
-        x = self.flat(x)
-        y_1 = self.d4_1(x)
-        # print(y_1.shape)
-        # y_2 = self.d4_2(x)
-        # print(y_2.shape)
-        return y_1  # , y_2
 
 
 def main(args):
@@ -58,11 +30,13 @@ def main(args):
     # ============== get dataset ==============
     # use tfrecord
     print("============== get dataloader ==============")
-    train_loader = TfrecordsLoader(args.file_list, args, "train", "pfld")
-    test_loader = TfrecordsLoader(args.test_list, args, "test", "pfld")
+    train_loader = TfrecordsLoader(args.file_list, args, "train", "xin")
+    test_loader = TfrecordsLoader(args.test_list, args, "test", "xin")
     print("============ get tfrecord train data ===============")
     train_loader.create_tfrecord()
     num_train_file = train_loader.num_file
+    train_loader.calMeanShape()
+    mean_shape = train_loader.meanShape
     print("============ get tfrecord test data ===============")
     test_loader.create_tfrecord()
     num_test_file = test_loader.num_file
@@ -79,10 +53,16 @@ def main(args):
     # ================== create models ================
     print("=================== create models ===============")
     model = XinNingNetwork(args.num_labels, args.image_size)
-    # print(model.summary())
+    # get_model_summary(model, [args.image_size, args.image_size, 3])
 
     def loss_objects(outputs, targets, L2_losses):
-        landmarks_pre = outputs[0]
+        # landmarks_pre = outputs[0]
+        # landmarks_pre = tf.map_fn(lambda x: tf.add(x, tf.cast(tf.constant(mean_shape), dtype=tf.float32)), landmarks_out)
+        debug_list = []
+        landmarks_pre = tf.add(outputs[0], mean_shape)
+        debug_list.append(outputs[0])
+        debug_list.append(landmarks_pre)
+
         landmark_batch, euler_batch = targets[0], targets[1]
         # attributes_w_n = tf.to_float(attribute_batch[:, 1:6])
         # _num = attributes_w_n.shape[0]
@@ -98,7 +78,7 @@ def main(args):
         loss_sum = tf.reduce_mean(loss_sum)  # * _sum_k)#  * attributes_w_n)
         loss_sum += L2_loss
 
-        return loss_sum, L2_loss
+        return loss_sum, L2_loss, debug_list
 
     boundaries = [
         int(bound) * epoch_size for bound in args.lr_epoch.split(',')]
@@ -112,12 +92,12 @@ def main(args):
     @tf.function
     def train_step(inputs, targets):
         with tf.GradientTape() as tape:
-            outputs = model(inputs)
-            loss_value, L2_loss = loss_objects(outputs, targets, model.losses)
+            outputs = model(inputs, training=True)
+            loss_value, L2_loss, debug_list = loss_objects(outputs, targets, model.losses)
 
         gradients = tape.gradient(loss_value, model.trainable_variables)
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-        return outputs, loss_value, L2_loss
+        return outputs, loss_value, L2_loss, debug_list
 
     epoch_start = 0
 
@@ -128,6 +108,14 @@ def main(args):
         root = tf.train.Checkpoint(optimizer=optimizer, model=model)
         root.restore(tf.train.latest_checkpoint(pretrained_model))
         print('Restore from model directory: {}'.format(pretrained_model))
+        # import pdb;pdb.set_trace()
+
+    # model.compile(
+    #     optimizer=optimizer,
+    #     # I used logits as output from the last layer, hence this
+    #     loss=loss_objects,
+    #     metrics=['mae']
+    # )
 
     all_step = 0
     for epoch in range(epoch_start, args.max_epoch):
@@ -149,8 +137,14 @@ def main(args):
             batch_train_dataset = train_dataset.batch(args.batch_size)
 
             for batch_i, (image_batch, landmarks_batch, _, euler_batch) in enumerate(batch_train_dataset):
-                outs, losses, L2_loss = train_step(
+                # start = time.time()
+                # import pdb;pdb.set_trace()
+                outs, losses, L2_loss, debug_list = train_step(
                     image_batch, [landmarks_batch, euler_batch])
+                # save heatmap image
+                cv2.imwrite("./test_heatmap.jpg", outs[1][1][0].numpy()*256)
+                # outputs = model.fit(image_batch)
+                # print("elapsed: ", time.time() - start)
                 if ((batch_i + 1) % 10) == 0 or (batch_i + 1) == epoch_size:
                     Epoch = 'Epoch:[{:<4}][{:<4}/{:<4}][{:<4}/{:<4}]'.format(
                         epoch, record_id + 1, train_loader.num_records, batch_num, epoch_size)
@@ -171,14 +165,19 @@ def main(args):
         print("save checkpoint: {}".format(checkpoint_path))
         print("save SavedModel: {}".format(savedmodel_path))
 
-        if epoch % 1 == 0 and epoch != 0 and epoch > 0:
+        if epoch % 10 == 0 and epoch != 0 and epoch > 0:
+            # import pdb;pdb.set_trace()
             print("test start")
             start = time.time()
-            test(batch_test_dataset, num_test_file, model, args)
+            test(batch_test_dataset, num_test_file, model, args, mean_shape)
             print("test time: {}" .format(time.time() - start))
 
 
-def test(batch_test_dataset, num_test_file, model, args):
+@tf.function
+def test_step(model, image_batch):
+    return model(image_batch, training=False)[0]
+
+def test(batch_test_dataset, num_test_file, model, args, mean_shape):
     loss_sum = 0
     landmark_error = 0
     landmark_01_num = 0
@@ -188,8 +187,8 @@ def test(batch_test_dataset, num_test_file, model, args):
     print("test epoch size: ", epoch_size)
     for i, (image_batch, landmarks_batch, attribute_batch, euler_batch) in enumerate(batch_test_dataset):  # batch_num
         print("start epoch: ", i)
-        pre_landmarks = model(image_batch)
-
+        output = test_step(model, image_batch)
+        pre_landmarks = np.array([land + mean_shape for land in output])
         diff = pre_landmarks - landmarks_batch
         loss = np.sum(diff * diff)
         loss_sum += loss
@@ -242,6 +241,29 @@ def test(batch_test_dataset, num_test_file, model, args):
     print("landmark_01_num: ", landmark_01_num)
     failure_rate_str = 'failure rate: L1 {:2.3f}'.format(failure_rate_norm)
     print(error_str + '\n' + failure_rate_str + '\n')
+
+@tf.function
+def get_model_summary(model, in_shape):
+    # 「仮のモデル」をFunctional APIで生成する独自関数
+    def get_functional_model(_model, in_shape):
+        x = Input(shape=(112, 112, 3), name='layer_in')
+        temp_model = tf.keras.Model(
+            inputs=[x],
+            outputs=_model.call(x),  # ※サブクラス化したモデルの`call`メソッドを指定
+            name='subclassing_model')  # 仮モデルにも名前付け
+        # import pdb;pdb.set_trace()
+        return temp_model
+
+    # Functional APIの「仮のモデル」を取得
+    f_model = get_functional_model(model, in_shape)
+    # モデルの内容を出力
+    model.build(input_shape=(None,112,112,3)) 
+    model.summary()
+    # モデルの構成図を表示
+    tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True, to_file='model.png')
+    print("weights:", len(model.weights))
+    print("trainable weights:", len(model.trainable_weights))
+    print("===== save model summury ======")
 
 
 def parse_arguments(argv):

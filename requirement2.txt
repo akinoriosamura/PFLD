@@ -15,6 +15,7 @@ enum34
 funcsigs
 gast
 git+https://github.com/akinoriosamura/tf-coreml@1d9caaa4c42019587e4c5e0d1ce543e6be8274f1#egg=tfcoreml
+graphviz
 grpcio
 h5py
 html5lib
@@ -25,6 +26,7 @@ ipython-genutils
 ipython
 jedi
 joblib
+keras
 keras-applications
 keras-preprocessing
 kiwisolver
@@ -43,6 +45,7 @@ prompt-toolkit
 protobuf
 ptyprocess
 pydot
+pydotplus
 pygments
 pyparsing
 python-dateutil

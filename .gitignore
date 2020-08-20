@@ -28,3 +28,5 @@ data/rotated*
 data/non_rotated*
 sam_*
 data/test_moru_dataset/
+*.jpg
+*.png

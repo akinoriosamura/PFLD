@@ -210,6 +210,7 @@ class TfrecordsLoader():
 
     def calMeanShape(self):
         mf_path = os.path.join(self.tfrecords_dir, "mean_face_shape.txt")
+        print("mean shape pathL: ", mf_path)
         if os.path.exists(mf_path):
             with open(mf_path, mode='r') as mf:
                 _meanShape = mf.readline()
