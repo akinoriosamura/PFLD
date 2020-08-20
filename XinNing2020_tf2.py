@@ -14,42 +14,50 @@ tf.keras.backend.set_floatx('float32')
 
 
 class XinNingNetwork(Model):
-    def __init__(self, num_labels, img_size):
+    def __init__(self, num_labels, img_size, meat_shape, train_phase='stage1'):
         super(XinNingNetwork, self).__init__()
         self.num_labels = num_labels
         self.img_size = img_size
+        self.meat_shape = tf.cast(meat_shape, dtype=tf.float32)
+        if train_phase=='stage1':
+            self.train_stage1 = True
+        elif train_phase=='stage2':
+            self.train_stage1 = False
+        else:
+            print("error model initializer train phase")
+            exit()
         ###### stage1 ######
         # 112*112*3(1) / conv3*3 / c:16,n:1,s:2
-        self.conv1_1 = self.conv2d(16, 3, 2, name='conv1_1')
-        self.bn1_1 = BatchNormalization()
+        self.conv1_1 = self.conv2d(16, 3, 2, trainable=self.train_stage1, name='conv1_1')
+        self.bn1_1 = BatchNormalization(trainable=self.train_stage1, name='bn1_1')
         # 56*56*16 / conv3*3 / c:32,n:1,s:2
-        self.conv1_2 = self.conv2d(32, 3, 2, name='conv1_2')
-        self.bn1_2 = BatchNormalization(name='bn1_2')
+        self.conv1_2 = self.conv2d(32, 3, 2, trainable=self.train_stage1, name='conv1_2')
+        self.bn1_2 = BatchNormalization(trainable=self.train_stage1, name='bn1_2')
         # 28*28*32 / pool2*2 / c:32,n:1,s:2
-        self.pool1_2 = self.maxpool2d(2, 2, name='pool1_2')
+        self.pool1_2 = self.maxpool2d(2, 2, trainable=self.train_stage1, name='pool1_2')
         # 14*14*32 / conv3*3 / c:64,n:1,s:2
-        self.conv1_2_1 = self.conv2d(64, 3, 2, name='conv1_2_1')
-        self.bn1_2_1 = BatchNormalization(name='bn1_2_1')
+        self.conv1_2_1 = self.conv2d(64, 3, 2, trainable=self.train_stage1, name='conv1_2_1')
+        self.bn1_2_1 = BatchNormalization(trainable=self.train_stage1, name='bn1_2_1')
         # 7*7*64 / global_pool / c:64,n:1
-        self.pool1_2_1 = GlobalAveragePooling2D(name='pool1_2_1')
+        self.pool1_2_1 = GlobalAveragePooling2D(trainable=self.train_stage1, name='pool1_2_1')
         # 14*14*32 / conv3*3 / c:64,n:1,s:2
-        self.conv1_3 = self.conv2d(64, 3, 2, name='conv1_3')
-        self.bn1_3 = BatchNormalization(name='bn1_3')
+        self.conv1_3 = self.conv2d(64, 3, 2, trainable=self.train_stage1, name='conv1_3')
+        self.bn1_3 = BatchNormalization(trainable=self.train_stage1, name='bn1_3')
         # 7*7*64 / pool2*2 / c:64,n:1,s:2
-        self.pool1_3 = self.maxpool2d(2, 2, name='pool1_3')
+        self.pool1_3 = self.maxpool2d(2, 2, trainable=self.train_stage1, name='pool1_3')
         # 4*4*64 / conv3*3 / c:64,n:1,s:2
-        self.conv1_3_1 = self.conv2d(64, 3, 2, name='conv1_3_1')
-        self.bn1_3_1 = BatchNormalization(name='bn1_3_1')
+        self.conv1_3_1 = self.conv2d(64, 3, 2, trainable=self.train_stage1, name='conv1_3_1')
+        self.bn1_3_1 = BatchNormalization(trainable=self.train_stage1, name='bn1_3_1')
         # 2*2*64 / global_pool / c:64,n:1
-        self.pool1_3_1 = GlobalAveragePooling2D(name='pool1_3_1')
+        self.pool1_3_1 = GlobalAveragePooling2D(trainable=self.train_stage1, name='pool1_3_1')
         # 4*4*64 / conv3*3 / c:64,n:1,s:2
-        self.conv1_4 = self.conv2d(64, 3, 2, name='conv1_4')
-        self.bn1_4 = BatchNormalization(name='bn1_4')
+        self.conv1_4 = self.conv2d(64, 3, 2, trainable=self.train_stage1, name='conv1_4')
+        self.bn1_4 = BatchNormalization(trainable=self.train_stage1, name='bn1_4')
         # 2*2*64 / global_pool / c:64,n:1
-        self.pool1_4_1 = GlobalAveragePooling2D(name='pool1_4_1')
+        self.pool1_4_1 = GlobalAveragePooling2D(trainable=self.train_stage1, name='pool1_4_1')
         # 1*1*64*3() / concat / 1*1*192
         # 1*1*192 / fc / 1*136
-        self.fc1 = self.dense(num_labels*2, name='fc1')
+        self.fc1 = self.dense(num_labels*2, trainable=self.train_stage1, name='fc1')
 
         ###### stage2 ######
         # 112*112*1*2 / concat / 112*112*2
@@ -87,7 +95,7 @@ class XinNingNetwork(Model):
         # 1*1*192 / fc / 1*136
         self.fc2 = self.dense(num_labels*2, name='fc2')
 
-    def conv2d(self, filters, k, s, padding='same', use_bias=False, name='none'):
+    def conv2d(self, filters, k, s, padding='same', use_bias=False, trainable=True, name='none'):
         return Conv2D(
             filters,
             k,
@@ -98,23 +106,26 @@ class XinNingNetwork(Model):
             kernel_initializer='glorot_uniform',
             bias_initializer='zeros',
             kernel_regularizer=tf.keras.regularizers.l2(0.01),
+            trainable=trainable,
             name=name
         )
 
-    def maxpool2d(self, ps, s, padding='same', name='none'):
+    def maxpool2d(self, ps, s, padding='same', trainable=True, name='none'):
         return MaxPooling2D(
             pool_size=(ps, ps),
             strides=(s, s),
             padding=padding,
+            trainable=trainable,
             name=name
         )
 
-    def dense(self, units, name='none'):
+    def dense(self, units, trainable=True, name='none'):
         return Dense(
             units,
             use_bias=True,
             activation=tf.nn.relu6,
             kernel_regularizer=tf.keras.regularizers.l2(0.01),
+            trainable=trainable,
             name=name
         )
 
@@ -156,14 +167,16 @@ class XinNingNetwork(Model):
     """
 
     # by tf
-    def label_heatmap(self, land):
+    def label_heatmap(self, label_input):
         # land: [2]
+        land = label_input[0]
+        ms = label_input[1]
         x_range = tf.range(0, self.img_size)
         y_range = tf.range(0, self.img_size)
         xx, yy = tf.meshgrid(x_range, y_range)
         # land is normalized so return by img size multiply
-        land_x = tf.math.multiply(land[0], self.img_size)
-        land_y = tf.math.multiply(land[1], self.img_size)
+        land_x = tf.math.multiply(tf.add(land[0], ms[0]), self.img_size)
+        land_y = tf.math.multiply(tf.add(land[1], ms[1]), self.img_size)
         _xx = tf.pow(tf.subtract(tf.cast(xx, dtype=tf.float32), land_x), 2)
         _yy = tf.pow(tf.subtract(tf.cast(yy, dtype=tf.float32), land_y), 2)
         d2 = tf.add(_xx, _yy)
@@ -174,7 +187,8 @@ class XinNingNetwork(Model):
 
     def img_heatmap(self, land):
         # land: [68, 2]
-        one_label_heatmap = tf.vectorized_map(self.label_heatmap, land)
+        _meat_shapes = tf.reshape(self.meat_shape, [68, 2])
+        one_label_heatmap = tf.vectorized_map(self.label_heatmap, (land, _meat_shapes))
         labels_heatmap = tf.reduce_sum(
             one_label_heatmap, 0, name="label_heatmap")
         max_v = tf.reduce_max(labels_heatmap)
@@ -191,7 +205,7 @@ class XinNingNetwork(Model):
 
         return heatmap, [landmark, heatmap]
 
-    def call(self, input, training=False):
+    def call(self, input, training=True):
         print("=== start network ===")
         # import pdb;pdb.set_trace()
         print('PFLD input shape({}): {}'.format(input.name, input.shape))
@@ -240,6 +254,10 @@ class XinNingNetwork(Model):
         _heatmap, _heat_values = self.HeatMap(_output_1)
         print(_heatmap.name, _heatmap.shape)
         print("=== finish stage 1 ===")
+        if self.train_stage1:
+            # if True:
+            print("=== finish train in stage 1 ===")
+            return [_output_1], _heat_values
 
         ###### stage2 ######
         print("=== start stage 2 ===")
@@ -291,14 +309,6 @@ class XinNingNetwork(Model):
         print("last layer name")
         print(_output_2.name, _output_2.shape)
         print("=== finish stage 2 ===")
+        print("=== finish train in stage 2 ===")
 
-        return _output_1, _heat_values
-
-
-def sample():
-    pass
-    """
-    # trainableはbatch_normの内部にあるvariablesをGraphKeys.TRAINABLE_VARIABLESに登録するかどうかを制御するためのboolパラメーターなのに対して、
-    # is_trainingはmoving_meanやmoving_varianceの挙動に関するboolパラメーターです。どちらもデフォルトでTrueですが、学習以外の時は明示的にFalseを設定する必要があります。
-    # 特にis_trainingがTrueのままの場合、同じ入力に対してbatch_normが毎回違う出力をしてしまい、モデルの再現性がなくなる場合があるので注意が必要です。
-    """
+        return [_output_1, _output_2], _heat_values
