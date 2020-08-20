@@ -23,10 +23,11 @@ def extract_annotations(json_dict):
             # {'top': '49', 'left': '49', 'width': '193', 'height': '194'}
             box = label["bb"]
             # bbox = [x1, y1, x2, y2]
-            bbox = [int(box["left"]), int(box["top"]), int(box["left"])+int(box["width"]), int(box["top"])+int(box["height"])]
+            bbox = [int(box["left"]), int(box["top"]), int(
+                box["left"])+int(box["width"]), int(box["top"])+int(box["height"])]
             bbox = list(map(str, bbox))
             for land_id in range(len(label["landmark"].values())):
-            # for _, lands in label["landmark"].items():
+                # for _, lands in label["landmark"].items():
                 # , {'x': '93', 'y': '180'}
                 lands = label["landmark"][str(land_id)]
                 landmark = [int(lands['x']), int(lands['y'])]
@@ -73,13 +74,15 @@ if __name__ == '__main__':
 
     if DEBUG:
         anno = annotations[0]
-        landmarks = np.asarray(list(map(float, anno[:136])), dtype=np.float32).reshape(-1, 2)
+        landmarks = np.asarray(
+            list(map(float, anno[:136])), dtype=np.float32).reshape(-1, 2)
         # bbox = [x1, y1, x2, y2]
         bbox = np.asarray((anno[136:140]), dtype=np.int32)
         attribs = list(map(int, anno[140:146]))
         img_path = os.path.join(img_dir, anno[146])
         img = cv2.imread(img_path)
-        cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (255, 0, 0), 1, 1)
+        cv2.rectangle(img, (bbox[0], bbox[1]),
+                      (bbox[2], bbox[3]), (255, 0, 0), 1, 1)
 
         id = 1
         for x, y in landmarks:

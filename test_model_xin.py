@@ -38,7 +38,7 @@ def main(args):
     #     mean_shape_str = mf.readline()
     #     mean_shape_list = mean_shape_str.strip().split(" ")
     #     mean_shape = [float(ms) for ms in mean_shape_list]
-# 
+#
     #     print("get mean face shape")
 
     loss_sum = 0
@@ -55,7 +55,8 @@ def main(args):
         phase_train_placeholder = tf.constant(False, name='phase_train')
         # landmarks_pre, _, _ = create_model(
         #     image_batch, landmark_batch, phase_train_placeholder, args)
-        landmarks_pre, _, _ = create_model(image_batch, landmark_batch, phase_train_placeholder, args)
+        landmarks_pre, _, _ = create_model(
+            image_batch, landmark_batch, phase_train_placeholder, args)
 
         save_params = tf.trainable_variables()
         saver = tf.train.Saver(save_params, max_to_keep=None)
@@ -116,7 +117,8 @@ def main(args):
                     image_batch: input
                 }
                 st = time.time()
-                pre_landmarks = inf_sess.run(landmarks_pre, feed_dict=feed_dict)
+                pre_landmarks = inf_sess.run(
+                    landmarks_pre, feed_dict=feed_dict)
                 # print(pre_landmarks)
                 print("elaps: ", time.time() - st)
                 pre_landmark = pre_landmarks[0]
@@ -124,12 +126,15 @@ def main(args):
                 h, w, _ = image.shape
                 if DEBUG:
                     img = image.copy()
-                    annotate_pre_landmark = pre_landmark.reshape(-1, 2) * [h, w]
+                    annotate_pre_landmark = pre_landmark.reshape(-1, 2) * [
+                        h, w]
                     for land_id, (x, y) in enumerate(annotate_pre_landmark.astype(np.int32)):
                         cv2.circle(img, (x, y), 1, (0, 255, 0), 1)
-                        cv2.imwrite("./show_labeled" + str(land_id) + ".jpg", img)
+                        cv2.imwrite("./show_labeled" +
+                                    str(land_id) + ".jpg", img)
                     img = image.copy()
-                    annotate_landmark = landmarks[file_id].reshape(-1, 2) * [h, w]
+                    annotate_landmark = landmarks[file_id].reshape(-1, 2) * [
+                        h, w]
                     for land_id, (x, y) in enumerate(annotate_landmark.astype(np.int32)):
                         cv2.circle(img, (x, y), 1, (0, 255, 0), 1)
                         cv2.imwrite("./show_test" + str(land_id) + ".jpg", img)
@@ -137,12 +142,12 @@ def main(args):
                     print(os.path.join(args.out_dir, filename))
                     cv2.imwrite(os.path.join(args.out_dir, filename), image)
                 else:
-                    annotate_pre_landmark = pre_landmark.reshape(-1, 2) * [h, w]
+                    annotate_pre_landmark = pre_landmark.reshape(-1, 2) * [
+                        h, w]
                     for (x, y) in annotate_pre_landmark.astype(np.int32):
                         cv2.circle(image, (x, y), 1, (0, 255, 0), 1)
                     print(os.path.join(args.out_dir, filename))
                     cv2.imwrite(os.path.join(args.out_dir, filename), image)
-
 
                 # cal loss
                 # import pdb;pdb.set_trace()
@@ -168,19 +173,23 @@ def main(args):
                 # RMSE
                 landmark_2 = landmark.reshape(-1, 2)
                 diff_land = pre_landmark.reshape(-1, 2) - landmark_2
-                dis_land = [(np.linalg.norm(one_diff)*args.image_size)**2 for one_diff in diff_land]
+                dis_land = [(np.linalg.norm(one_diff)*args.image_size)
+                            ** 2 for one_diff in diff_land]
                 _RMSE = np.mean(dis_land)
                 #eye_diff_land = pre_landmark.reshape(-1, 2) - landmark.reshape(-1, 2)
                 #eye_dis_land = [np.linalg.norm(one_diff) for one_diff in diff_land]
-                d_eyes = (np.linalg.norm(landmark_2[left_eye_edge] - landmark_2[right_eye_edge])*args.image_size)**2
+                d_eyes = (np.linalg.norm(
+                    landmark_2[left_eye_edge] - landmark_2[right_eye_edge])*args.image_size)**2
                 RMSE = _RMSE / d_eyes
                 print("RMSE: ", RMSE)
-                if np.isnan(RMSE) or np.isinf(RMSE): # or RMSE > 50:
-                    import pdb;pdb.set_trace()
+                if np.isnan(RMSE) or np.isinf(RMSE):  # or RMSE > 50:
+                    import pdb
+                    pdb.set_trace()
                 _NRMSE += RMSE
 
                 error_all_points = 0
-                for count_point in range(pre_landmark.shape[0] // 2):  # num points
+                # num points
+                for count_point in range(pre_landmark.shape[0] // 2):
                     error_diff = pre_landmark[(count_point * 2):(count_point * 2 + 2)] - \
                         landmark[(count_point * 2):(count_point * 2 + 2)]
                     error = np.sqrt(np.sum(error_diff * error_diff))
@@ -209,8 +218,10 @@ def main(args):
             error_str = 'mean error : {:2.3f}'.format(landmark_error_norm)
 
             failure_rate_norm = landmark_01_num / (len(filenames) * 1.0)
-            failure_rate_str = 'failure rate: L1 {:2.3f}'.format(failure_rate_norm)
+            failure_rate_str = 'failure rate: L1 {:2.3f}'.format(
+                failure_rate_norm)
             print(error_str + '\n' + failure_rate_str + '\n')
+
 
 def parse_arguments(argv):
     def str2bool(v):
@@ -223,10 +234,12 @@ def parse_arguments(argv):
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--file_list', type=str, default='data/train_data/list.txt')
+    parser.add_argument('--file_list', type=str,
+                        default='data/train_data/list.txt')
     parser.add_argument('--seed', type=int, default=666)
     parser.add_argument('--max_epoch', type=int, default=1000)
-    parser.add_argument('--test_list', type=str, default='data/test_data/list.txt')
+    parser.add_argument('--test_list', type=str,
+                        default='data/test_data/list.txt')
     parser.add_argument('--image_size', type=int, default=112)
     parser.add_argument('--num_labels', type=int, default=98)
     parser.add_argument('--image_channels', type=int, default=3)
@@ -240,7 +253,8 @@ def parse_arguments(argv):
     parser.add_argument('--depth_multi', type=float, default=1)
     parser.add_argument('--out_dir', type=str, default='sample_result')
     parser.add_argument('--num_quant', type=int, default=64)
-    parser.add_argument('--is_augment', type=str2bool, default=False, help='Whether to augment')
+    parser.add_argument('--is_augment', type=str2bool,
+                        default=False, help='Whether to augment')
 
     return parser.parse_args(argv)
 

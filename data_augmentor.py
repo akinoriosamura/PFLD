@@ -11,7 +11,7 @@ import os
 
 class DataAugmentator(object):
     def __init__(self, num_labels):
-        
+
         self.num_labels = num_labels
         self.id = 0
         """
@@ -35,7 +35,7 @@ class DataAugmentator(object):
                 iaa.ContrastNormalization((0.5, 1.5))
             ]),
             iaa.SomeOf((0, 3),
-            [
+                       [
                 # add gaussian noise to images
                 iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05*255)),
                 # Make some images brighter and some darker.
@@ -49,7 +49,7 @@ class DataAugmentator(object):
             # in processing data, already flip randomly
             # iaa.Fliplr(0.3)
         ])
-        
+
     def show_img(self, img, land, state):
         os.makedirs("sample_aug", exist_ok=True)
 
@@ -61,7 +61,6 @@ class DataAugmentator(object):
             cv2.circle(img, (x, y), 1, (0, 0, 255))
         cv2.imwrite("./sample_aug/" + str(self.id) + state + ".jpg", img)
         self.id += 1
-
 
     def augment_image(self, image, landmark):
         h, w, _ = image.shape

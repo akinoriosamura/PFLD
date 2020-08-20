@@ -1,17 +1,16 @@
 # -*- coding: UTF-8 -*-
+import numpy as np
+import math
+import random
+import time
+import gc
+import sys
+import os
 import tensorflow as tf
 from generate_data_tfrecords_tf2 import TfrecordsLoader
 from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, GlobalAveragePooling2D
 from tensorflow.keras import Model
 tf.keras.backend.set_floatx('float32')
-
-import os
-import sys
-import gc
-import time
-import random
-import math
-import numpy as np
 
 
 class XinNingNetwork(Model):
@@ -90,21 +89,21 @@ class XinNingNetwork(Model):
             kernel_initializer='glorot_uniform',
             bias_initializer='zeros',
             kernel_regularizer=tf.keras.regularizers.l2(0.01)
-            )
+        )
 
     def maxpool2d(self, ps, s, padding='same'):
         return MaxPooling2D(
             pool_size=(ps, ps),
             strides=(s, s),
             padding=padding
-            )
+        )
 
     def dense(self, units):
         return Dense(
             units,
             activation=tf.nn.relu6,
             kernel_regularizer=tf.keras.regularizers.l2(0.01)
-            )
+        )
 
     """
     def label_heatmap(self, land):
@@ -152,14 +151,16 @@ class XinNingNetwork(Model):
         _xx = tf.pow(tf.subtract(tf.cast(xx, dtype=tf.float32), land_x), 2)
         _yy = tf.pow(tf.subtract(tf.cast(yy, dtype=tf.float32), land_y), 2)
         d2 = tf.add(_xx, _yy)
-        heatmap_tmp = tf.math.exp(tf.math.negative(d2), name="one_label_heatmap")
+        heatmap_tmp = tf.math.exp(
+            tf.math.negative(d2), name="one_label_heatmap")
 
         return heatmap_tmp
 
     def img_heatmap(self, land):
         # land: [68, 2]
         one_label_heatmap = tf.map_fn(self.label_heatmap, land)
-        labels_heatmap = tf.reduce_sum(one_label_heatmap, 0, name="label_heatmap")
+        labels_heatmap = tf.reduce_sum(
+            one_label_heatmap, 0, name="label_heatmap")
 
         return labels_heatmap
 

@@ -8,6 +8,7 @@ import os
 
 from data_augmentor import DataAugmentator
 
+
 class TfrecordsLoader():
     def __init__(self, file_list, args, phase, model_type, debug=False):
         print("labels; ", args.num_labels)
@@ -19,7 +20,8 @@ class TfrecordsLoader():
         self.num_file = len(self.lines)
         self.file_base = os.path.basename(os.path.dirname(self.file_list))
         self.args = args
-        self.tfrecords_dir = os.path.join(self.args.tfrecords_dir, self.file_base)
+        self.tfrecords_dir = os.path.join(
+            self.args.tfrecords_dir, self.file_base)
         self.dataaugmentor = DataAugmentator(self.args.num_labels)
         self.phase = phase
         self.model_type = model_type
@@ -31,8 +33,10 @@ class TfrecordsLoader():
         self.euler_angles = None
         line = self.lines[0].strip().split()
         landmark = line[1:self.args.num_labels*2+1]  # 1:197
-        attribute = line[self.args.num_labels*2+1:self.args.num_labels*2+7]  # 197:203
-        euler_angle = line[self.args.num_labels*2+7:self.args.num_labels*2+10]  # 203:206
+        attribute = line[self.args.num_labels*2 +
+                         1:self.args.num_labels*2+7]  # 197:203
+        euler_angle = line[self.args.num_labels*2 +
+                           7:self.args.num_labels*2+10]  # 203:206
         landmark = np.asarray(landmark, dtype=np.float32)
         attribute = np.asarray(attribute, dtype=np.int32)
         euler_angle = np.asarray(euler_angle, dtype=np.float32)
@@ -50,8 +54,10 @@ class TfrecordsLoader():
             line = line.strip().split()
             path = line[0]
             landmark = line[1:self.args.num_labels*2+1]  # 1:197
-            attribute = line[self.args.num_labels*2+1:self.args.num_labels*2+7]  # 197:203
-            euler_angle = line[self.args.num_labels*2+7:self.args.num_labels*2+10]  # 203:206
+            attribute = line[self.args.num_labels*2 +
+                             1:self.args.num_labels*2+7]  # 197:203
+            euler_angle = line[self.args.num_labels*2 +
+                               7:self.args.num_labels*2+10]  # 203:206
 
             landmark = np.asarray(landmark, dtype=np.float32)
             attribute = np.asarray(attribute, dtype=np.int32)
@@ -66,7 +72,8 @@ class TfrecordsLoader():
             self.landmarks = np.asarray(landmarks, dtype=np.float32)
         elif self.model_type == 'xin':
             print(" get scale landmark in xin")
-            self.landmarks = np.asarray(landmarks, dtype=np.float32)# * self.args.image_size
+            self.landmarks = np.asarray(
+                landmarks, dtype=np.float32)  # * self.args.image_size
             lands = self.landmarks.copy()
             for land in lands:
                 if self.sumShape is None:
@@ -78,23 +85,24 @@ class TfrecordsLoader():
 
     def make_example(self, image, landmark, attribute, euler_angle):
         return tf.train.Example(features=tf.train.Features(feature={
-            'image' : tf.train.Feature(float_list=tf.train.FloatList(value=image.reshape(-1))),
-            'landmark' : tf.train.Feature(float_list=tf.train.FloatList(value=landmark.reshape(-1))),
-            'attribute' : tf.train.Feature(float_list=tf.train.FloatList(value=attribute.reshape(-1))),
-            'euler_angle' : tf.train.Feature(float_list=tf.train.FloatList(value=euler_angle.reshape(-1)))
+            'image': tf.train.Feature(float_list=tf.train.FloatList(value=image.reshape(-1))),
+            'landmark': tf.train.Feature(float_list=tf.train.FloatList(value=landmark.reshape(-1))),
+            'attribute': tf.train.Feature(float_list=tf.train.FloatList(value=attribute.reshape(-1))),
+            'euler_angle': tf.train.Feature(float_list=tf.train.FloatList(value=euler_angle.reshape(-1)))
         }))
 
-    def write_one_tfrecord(self, tfrecord_path): 
+    def write_one_tfrecord(self, tfrecord_path):
         writer = tf.io.TFRecordWriter(tfrecord_path)
         for image, landmark, attribute, euler_angle in zip(self.images, self.landmarks, self.attributes, self.euler_angles):
             ex = self.make_example(image, landmark, attribute, euler_angle)
             writer.write(ex.SerializeToString())
         writer.close()
 
-    def write_tfrecord(self, tfrecord_base_path): 
+    def write_tfrecord(self, tfrecord_base_path):
         def _parse_data(fname):
             image = cv2.imread(fname)
-            image = cv2.resize(image, (self.args.image_size, self.args.image_size))
+            image = cv2.resize(
+                image, (self.args.image_size, self.args.image_size))
             return image
 
         def _normalize(image):
@@ -114,13 +122,16 @@ class TfrecordsLoader():
         # import pdb;pdb.set_trace()
         if self.phase == "train" and self.args.is_augment:
             print("======= augment =========")
-            tfrecord_path = os.path.join(self.tfrecords_dir, ("augment_" + tfrecord_base_path))
-            augments = np.array(list(map(self.dataaugmentor.augment_image, self.images, self.landmarks)))
+            tfrecord_path = os.path.join(
+                self.tfrecords_dir, ("augment_" + tfrecord_base_path))
+            augments = np.array(
+                list(map(self.dataaugmentor.augment_image, self.images, self.landmarks)))
             self.images = np.array(list(augments[:, 0]))
             self.landmarks = np.array(list(augments[:, 1]))
         else:
             print("======= not augment =========")
-            tfrecord_path = os.path.join(self.tfrecords_dir, ("unaugment_" + tfrecord_base_path))
+            tfrecord_path = os.path.join(
+                self.tfrecords_dir, ("unaugment_" + tfrecord_base_path))
         self.save_anno(o_images, o_landmarks, "test")
         #self.save_anno(self.images, (self.landmarks), "aug")
 
@@ -137,12 +148,16 @@ class TfrecordsLoader():
             for record_file in records_files:
                 if self.phase == 'train':
                     if "train.tfrecords" in record_file:
-                        print("append record files: ", os.path.join(self.tfrecords_dir, record_file))
-                        self.records_list.append(os.path.join(self.tfrecords_dir, record_file))
+                        print("append record files: ", os.path.join(
+                            self.tfrecords_dir, record_file))
+                        self.records_list.append(os.path.join(
+                            self.tfrecords_dir, record_file))
                 elif self.phase == 'test':
                     if "test.tfrecords" in record_file:
-                        print("append record files: ", os.path.join(self.tfrecords_dir, record_file))
-                        self.records_list.append(os.path.join(self.tfrecords_dir, record_file))
+                        print("append record files: ", os.path.join(
+                            self.tfrecords_dir, record_file))
+                        self.records_list.append(os.path.join(
+                            self.tfrecords_dir, record_file))
         else:
             print("tfrecords no exist")
             os.makedirs(self.tfrecords_dir, exist_ok=True)
@@ -157,10 +172,11 @@ class TfrecordsLoader():
                     print("index: {0} : {1}".format(i_st, i_end))
                     part_lines = self.lines[i_st: i_end]
                     self.set_data(part_lines)
-                    tfrecord_base_path = self.phase + ".tfrecords." + str(id_record)
+                    tfrecord_base_path = self.phase + \
+                        ".tfrecords." + str(id_record)
                     tfrecord_path = self.write_tfrecord(tfrecord_base_path)
                     self.records_list.append(tfrecord_path)
-            elif self.phase =='test':
+            elif self.phase == 'test':
                 self.set_data(self.lines)
                 tfrecord_base_path = self.phase + ".tfrecords"
                 tfrecord_path = self.write_tfrecord(tfrecord_base_path)
@@ -170,9 +186,9 @@ class TfrecordsLoader():
 
     def parse_function(self, example_proto):
         features = {"image": tf.io.FixedLenFeature(self.images_shape, tf.float32),
-                "landmark": tf.io.FixedLenFeature(self.landmarks_shape, tf.float32),
-                "attribute": tf.io.FixedLenFeature(self.attributes_shape, tf.float32),
-                "euler_angle": tf.io.FixedLenFeature(self.euler_angles_shape, tf.float32)}
+                    "landmark": tf.io.FixedLenFeature(self.landmarks_shape, tf.float32),
+                    "attribute": tf.io.FixedLenFeature(self.attributes_shape, tf.float32),
+                    "euler_angle": tf.io.FixedLenFeature(self.euler_angles_shape, tf.float32)}
 
         parsed_features = tf.io.parse_single_example(example_proto, features)
 
@@ -184,9 +200,10 @@ class TfrecordsLoader():
         dataset = tf.data.TFRecordDataset(
             tfrecord_path,
             num_parallel_reads=os.cpu_count()
-            )
+        )
         dataset = dataset.map(self.parse_function)
-        dataset = dataset.shuffle(buffer_size = int(self.num_file / (self.num_records)))
+        dataset = dataset.shuffle(buffer_size=int(
+            self.num_file / (self.num_records)))
         print("get tfrecords")
 
         return dataset
@@ -236,6 +253,7 @@ class TfrecordsLoader():
                 # cv2.putText(img, str(land_id), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.1, (255, 255, 255), thickness=1)
             cv2.imwrite("./img_" + str(i) + type + ".jpg", img)
         print("finish save anno")
+
 
 if __name__ == '__main__':
     file_list = 'data/train_data/list.txt'

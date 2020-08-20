@@ -58,13 +58,18 @@ class ImageDate():
             else:
                 line = self.remove_unuse_land_68to52(line)
             if len(line) != (num_labels * 2 + 11):
-                import pdb;pdb.set_trace()
+                import pdb
+                pdb.set_trace()
             assert(len(line) == (num_labels * 2 + 11))
-            self.tracked_points = [9, 11, 12, 14, 20, 23, 26, 29, 17, 19, 32, 38, 41, 4]
+            self.tracked_points = [9, 11, 12, 14, 20,
+                                   23, 26, 29, 17, 19, 32, 38, 41, 4]
             self.list = line
-            self.landmark = np.asarray(list(map(float, line[:num_labels * 2])), dtype=np.float32).reshape(-1, 2)
-            self.box = np.asarray(list(map(int, line[num_labels * 2:num_labels * 2 + 4])), dtype=np.int32)
-            flag = list(map(int, line[num_labels * 2 + 4: num_labels * 2 + 10]))
+            self.landmark = np.asarray(
+                list(map(float, line[:num_labels * 2])), dtype=np.float32).reshape(-1, 2)
+            self.box = np.asarray(
+                list(map(int, line[num_labels * 2:num_labels * 2 + 4])), dtype=np.int32)
+            flag = list(
+                map(int, line[num_labels * 2 + 4: num_labels * 2 + 10]))
             flag = list(map(bool, flag))
             self.pose = flag[0]
             self.expression = flag[1]
@@ -82,12 +87,16 @@ class ImageDate():
             # if "WFLW" in dataset:
             #     line = self.remove_unuse_land_98to68(line)
             if len(line) != 147:
-                import pdb;pdb.set_trace()
+                import pdb
+                pdb.set_trace()
             assert(len(line) == 147)
-            self.tracked_points = [17, 21, 22, 26, 36, 39, 42, 45, 31, 35, 48, 54, 57, 8]
+            self.tracked_points = [17, 21, 22, 26,
+                                   36, 39, 42, 45, 31, 35, 48, 54, 57, 8]
             self.list = line
-            self.landmark = np.asarray(list(map(float, line[:136])), dtype=np.float32).reshape(-1, 2)
-            self.box = np.asarray(list(map(int, line[136:140])), dtype=np.int32)
+            self.landmark = np.asarray(
+                list(map(float, line[:136])), dtype=np.float32).reshape(-1, 2)
+            self.box = np.asarray(
+                list(map(int, line[136:140])), dtype=np.int32)
             flag = list(map(int, line[140:146]))
             flag = list(map(bool, flag))
             self.pose = flag[0]
@@ -102,10 +111,13 @@ class ImageDate():
             self.debug_num = 0
         elif num_labels == 98:
             assert(len(line) == 207)
-            self.tracked_points = [33, 38, 50, 46, 60, 64, 68, 72, 55, 59, 76, 82, 85, 16]
+            self.tracked_points = [33, 38, 50, 46, 60,
+                                   64, 68, 72, 55, 59, 76, 82, 85, 16]
             self.list = line
-            self.landmark = np.asarray(list(map(float, line[:196])), dtype=np.float32).reshape(-1, 2)
-            self.box = np.asarray(list(map(int, line[196:200])), dtype=np.int32)
+            self.landmark = np.asarray(
+                list(map(float, line[:196])), dtype=np.float32).reshape(-1, 2)
+            self.box = np.asarray(
+                list(map(int, line[196:200])), dtype=np.int32)
             flag = list(map(int, line[200:206]))
             flag = list(map(bool, flag))
             self.pose = flag[0]
@@ -126,10 +138,10 @@ class ImageDate():
         self.boxes = []
 
     def remove_unuse_land_68to52(self, line):
-        del_ago = [2,3,6,8,10,12,15,16]
-        del_left_eye_blow = [19,21]
-        del_right_eye_blow = [24,26]
-        del_nose = [29,31,33,35]
+        del_ago = [2, 3, 6, 8, 10, 12, 15, 16]
+        del_left_eye_blow = [19, 21]
+        del_right_eye_blow = [24, 26]
+        del_nose = [29, 31, 33, 35]
         dels = del_ago + del_left_eye_blow + del_right_eye_blow + del_nose
         # 削除する際にインデックスがずれないように降順に削除していく
         dels.sort(reverse=True)
@@ -141,15 +153,16 @@ class ImageDate():
 
         return line
 
-
     def remove_unuse_land_98to52(self, line):
-        del_ago = [1,2,3,5,6,7,9,10,11,13,14,15,17,18,19,21,22,23,25,26,27,29,30,31]
-        del_left_eye_blow = [34,36,38,39,40,41]
-        del_right_eye_blow = [43,45,47,48,49,50]
-        del_eye = [62,66,70,74]
-        del_eye_center = [96,97]
-        del_nose = [52,54,56,58]
-        dels = del_ago + del_left_eye_blow + del_right_eye_blow + del_eye + del_eye_center + del_nose
+        del_ago = [1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15,
+                   17, 18, 19, 21, 22, 23, 25, 26, 27, 29, 30, 31]
+        del_left_eye_blow = [34, 36, 38, 39, 40, 41]
+        del_right_eye_blow = [43, 45, 47, 48, 49, 50]
+        del_eye = [62, 66, 70, 74]
+        del_eye_center = [96, 97]
+        del_nose = [52, 54, 56, 58]
+        dels = del_ago + del_left_eye_blow + del_right_eye_blow + \
+            del_eye + del_eye_center + del_nose
         # 削除する際にインデックスがずれないように降順に削除していく
         dels.sort(reverse=True)
         for del_id in dels:
@@ -180,10 +193,12 @@ class ImageDate():
     def show_labels(self):
         img = cv2.imread(self.path)
         # WFLW bbox: x_min_rect y_min_rect x_max_rect y_max_rect
-        cv2.rectangle(img, (self.box[0], self.box[1]), (self.box[2], self.box[3]), (255, 0, 0), 1, 1)
+        cv2.rectangle(img, (self.box[0], self.box[1]),
+                      (self.box[2], self.box[3]), (255, 0, 0), 1, 1)
         for land_id, (x, y) in enumerate(self.landmark):
             cv2.circle(img, (x, y), 3, (0, 255, 0))
-            cv2.putText(img, str(land_id), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.2, (255, 0, 0), thickness=1)
+            cv2.putText(img, str(land_id), (x, y),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.2, (255, 0, 0), thickness=1)
 
         cv2.imwrite("./setprepa_sam_label.jpg", img)
 
@@ -212,7 +227,8 @@ class ImageDate():
         try:
             height, width, _ = img.shape
         except Exception as e:
-            import pdb;pdb.set_trace()
+            import pdb
+            pdb.set_trace()
         # 顔枠の左上 or 画像の左上縁
         dx = max(0, -x1)
         dy = max(0, -y1)
@@ -229,7 +245,8 @@ class ImageDate():
         imgT = img[y1:y2, x1:x2]
         if (dx > 0 or dy > 0 or edx > 0 or edy > 0):
             # 画像をコピーし周りに境界を作成
-            imgT = cv2.copyMakeBorder(imgT, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
+            imgT = cv2.copyMakeBorder(
+                imgT, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
         if imgT.shape[0] == 0 or imgT.shape[1] == 0:
             # 顔枠サイズが0なら
             imgTT = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
@@ -249,7 +266,7 @@ class ImageDate():
         self.imgs.append(imgT)
         self.landmarks.append(landmark)
 
-        if rotate=="rotate" and is_train:
+        if rotate == "rotate" and is_train:
             # =========データ拡張=========
             while len(self.imgs) < repeat:
                 angle = np.random.randint(-20, 20)
@@ -258,10 +275,13 @@ class ImageDate():
                 cy = cy + int(np.random.randint(-boxsize * 0.1, boxsize * 0.1))
                 M, landmark = apply_rotate(angle, (cx, cy), self.landmark)
 
-                imgT = cv2.warpAffine(img, M, (int(img.shape[1] * 1.1), int(img.shape[0] * 1.1)))
+                imgT = cv2.warpAffine(
+                    img, M, (int(img.shape[1] * 1.1), int(img.shape[0] * 1.1)))
                 wh = np.ptp(landmark, axis=0).astype(np.int32) + 1
-                size = np.random.randint(int(np.min(wh)), np.ceil(np.max(wh) * 1.25))
-                xy = np.asarray((cx - size // 2, cy - size // 2), dtype=np.int32)
+                size = np.random.randint(
+                    int(np.min(wh)), np.ceil(np.max(wh) * 1.25))
+                xy = np.asarray(
+                    (cx - size // 2, cy - size // 2), dtype=np.int32)
                 landmark = (landmark - xy) / size
                 if (landmark < 0).any() or (landmark > 1).any():
                     continue
@@ -281,7 +301,8 @@ class ImageDate():
 
                 imgT = imgT[y1:y2, x1:x2]
                 if (dx > 0 or dy > 0 or edx > 0 or edy > 0):
-                    imgT = cv2.copyMakeBorder(imgT, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
+                    imgT = cv2.copyMakeBorder(
+                        imgT, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
 
                 imgT = cv2.resize(imgT, (self.image_size, self.image_size))
 
@@ -305,14 +326,16 @@ class ImageDate():
                     img_tmp = imgT.copy()
                     for x, y in (landmark * self.image_size + 0.5).astype(np.int32):
                         cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
-                    cv2.imwrite(os.path.join("sample_labels", "sample_" + str(self.debug_num) + ".jpg"), img_tmp)
+                    cv2.imwrite(os.path.join(
+                        "sample_labels", "sample_" + str(self.debug_num) + ".jpg"), img_tmp)
 
                 self.imgs.append(imgT)
                 self.landmarks.append(landmark)
 
     def save_data(self, path, prefix):
         # attributeは特にいじらず保存
-        attributes = [self.pose, self.expression, self.illumination, self.make_up, self.occlusion, self.blur]
+        attributes = [self.pose, self.expression, self.illumination,
+                      self.make_up, self.occlusion, self.blur]
         attributes = np.asarray(attributes, dtype=np.int32)
         attributes_str = ' '.join(list(map(str, attributes)))
         labels = []
@@ -326,15 +349,20 @@ class ImageDate():
             # tracked pointsからpitch yaw rollを計算し保存
             euler_angles_landmark = []
             for index in self.tracked_points:
-                euler_angles_landmark.append([landmark[index][0] * img.shape[0], landmark[index][1] * img.shape[1]])
-            euler_angles_landmark = np.asarray(euler_angles_landmark).reshape((-1, 28))
-            pitch, yaw, roll = calculate_pitch_yaw_roll(euler_angles_landmark[0], self.image_size, self.image_size)
+                euler_angles_landmark.append(
+                    [landmark[index][0] * img.shape[0], landmark[index][1] * img.shape[1]])
+            euler_angles_landmark = np.asarray(
+                euler_angles_landmark).reshape((-1, 28))
+            pitch, yaw, roll = calculate_pitch_yaw_roll(
+                euler_angles_landmark[0], self.image_size, self.image_size)
             euler_angles = np.asarray((pitch, yaw, roll), dtype=np.float32)
             euler_angles_str = ' '.join(list(map(str, euler_angles)))
 
-            landmark_str = ' '.join(list(map(str, landmark.reshape(-1).tolist())))
+            landmark_str = ' '.join(
+                list(map(str, landmark.reshape(-1).tolist())))
 
-            label = '{} {} {} {}\n'.format(save_path, landmark_str, attributes_str, euler_angles_str)
+            label = '{} {} {} {}\n'.format(
+                save_path, landmark_str, attributes_str, euler_angles_str)
             labels.append(label)
         return labels
 
@@ -421,7 +449,7 @@ if __name__ == '__main__':
     outTrainDir = os.path.basename(outTrainPath)
     outTestDirPath = os.path.dirname(outTestPath)
     outTestDir = os.path.basename(outTestPath)
-    if rotate=="rotate":
+    if rotate == "rotate":
         print("rotate")
         outTrainDir = "rotated_" + outTrainDir
         outTestDir = "rotated_" + outTestDir
@@ -455,5 +483,6 @@ if __name__ == '__main__':
             is_train = False
         else:
             is_train = True
-        imgs = get_dataset_list(imageDirs, outDir, landmarkDir, is_train, rotate, int(num_labels), image_size, dataset)
+        imgs = get_dataset_list(imageDirs, outDir, landmarkDir, is_train, rotate, int(
+            num_labels), image_size, dataset)
     print('end')

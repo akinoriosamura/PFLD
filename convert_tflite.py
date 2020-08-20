@@ -5,7 +5,7 @@ save_model = "./models2/save_models/68/PFLD_growing_68_pre_WFLW"
 # モデルを変換
 converter = tf.lite.TFLiteConverter.from_saved_model(
     save_model + "/SavedModel"
-    )
+)
 # converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
 tflite_model = converter.convert()
 

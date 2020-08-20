@@ -12,7 +12,8 @@ class DataLoader():
         self.file_list = file_list
         self.args = args
         self.phase = phase
-        self.file_list, self.landmarks, self.attributes, self.euler_angles = self.gen_data(self.file_list, self.args.num_labels)
+        self.file_list, self.landmarks, self.attributes, self.euler_angles = self.gen_data(
+            self.file_list, self.args.num_labels)
         self.num_file = len(self.file_list)
 
         if debug:
@@ -47,20 +48,23 @@ class DataLoader():
         return (filenames, landmarks, attributes, euler_angles)
 
     def get_dataset(self):
-        dataset = tf.data.Dataset.from_tensor_slices((self.file_list, self.landmarks, self.attributes, self.euler_angles))
+        dataset = tf.data.Dataset.from_tensor_slices(
+            (self.file_list, self.landmarks, self.attributes, self.euler_angles))
 
         def _parse_data(filename, landmarks, attributes, euler_angles):
             # filename, landmarks, attributes = data
             file_contents = tf.read_file(filename)
-            image = tf.image.decode_png(file_contents, channels=self.args.image_channels)
+            image = tf.image.decode_png(
+                file_contents, channels=self.args.image_channels)
             # print(image.get_shape())
             # image.set_shape((args.image_size, args.image_size, args.image_channels))
-            image = tf.image.resize_images(image, (self.args.image_size, self.args.image_size), method=0)
+            image = tf.image.resize_images(
+                image, (self.args.image_size, self.args.image_size), method=0)
             image = tf.cast(image, tf.float32)
 
             image = image / 256.0
             return (image, landmarks, attributes, euler_angles)
-        
+
         dataset = dataset.map(_parse_data)
         dataset = dataset.shuffle(buffer_size=10000)
         return dataset, self.num_file

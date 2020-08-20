@@ -10,7 +10,8 @@ import time
 
 
 def conv2d(net, stride, num_channel, kernel, scope):
-    net = slim.conv2d(net, num_channel, [kernel, kernel], stride=stride, scope=scope)
+    net = slim.conv2d(net, num_channel, [
+                      kernel, kernel], stride=stride, scope=scope)
     print(net.name, net.get_shape())
 
     return net
@@ -18,15 +19,15 @@ def conv2d(net, stride, num_channel, kernel, scope):
 
 def depthwiseSeparableConv(net, _s_size, num_channel, scope):
     net = slim.separable_convolution2d(net,
-                                    num_outputs=None,
-                                    stride=_s_size,
-                                    depth_multiplier=1,
-                                    kernel_size=[3, 3],
-                                    scope=scope+'/depthwise_conv')
+                                       num_outputs=None,
+                                       stride=_s_size,
+                                       depth_multiplier=1,
+                                       kernel_size=[3, 3],
+                                       scope=scope+'/depthwise_conv')
     net = slim.convolution2d(net,
-                            num_channel, # num_output
-                            kernel_size=[1, 1],
-                            scope=scope+'/pointwise_conv')
+                             num_channel,  # num_output
+                             kernel_size=[1, 1],
+                             scope=scope+'/pointwise_conv')
 
     return net
 
@@ -35,23 +36,28 @@ def denseBlock(input, denseblockparams, isfirstlayer=False):
     isScaleDown = True
     if isfirstlayer:
         _s_size = 2 if isScaleDown else 1
-        out1 = conv2d(input, _s_size, num_channel=denseblockparams["out"], kernel=3, scope='conv1')
+        out1 = conv2d(
+            input, _s_size, num_channel=denseblockparams["out"], kernel=3, scope='conv1')
         out1 = tf.nn.relu(out1)
     else:
         _s_size = 2 if isScaleDown else 1
-        out1 = depthwiseSeparableConv(input, _s_size, num_channel=denseblockparams["out"], scope=denseblockparams["name"]+"out1")
+        out1 = depthwiseSeparableConv(
+            input, _s_size, num_channel=denseblockparams["out"], scope=denseblockparams["name"]+"out1")
     print(out1.name, out1.get_shape())
 
     _s_size = 1
-    out2 = depthwiseSeparableConv(out1, _s_size, num_channel=denseblockparams["out"], scope=denseblockparams["name"]+"out2")
+    out2 = depthwiseSeparableConv(
+        out1, _s_size, num_channel=denseblockparams["out"], scope=denseblockparams["name"]+"out2")
     print(out2.name, out2.get_shape())
 
     in3 = tf.nn.relu(tf.add(out1, out2))
-    out3 = depthwiseSeparableConv(in3, _s_size, num_channel=denseblockparams["out"], scope=denseblockparams["name"]+"out3")
+    out3 = depthwiseSeparableConv(
+        in3, _s_size, num_channel=denseblockparams["out"], scope=denseblockparams["name"]+"out3")
     print(out3.name, out3.get_shape())
 
     in4 = tf.nn.relu(tf.add(out1, tf.add(out2, out3)))
-    out4 = depthwiseSeparableConv(in4, _s_size, num_channel=denseblockparams["out"], scope=denseblockparams["name"]+"out4")
+    out4 = depthwiseSeparableConv(
+        in4, _s_size, num_channel=denseblockparams["out"], scope=denseblockparams["name"]+"out4")
     out = tf.nn.relu(tf.add(out1, tf.add(out2, tf.add(out3, out4))))
     print(out.name, out.get_shape())
 
@@ -68,7 +74,7 @@ def tfjs_inference(input, dense_params, batch_norm_params, weight_decay, num_lab
         normalizer_fn=slim.batch_norm,
         normalizer_params=batch_norm_params,
         padding='SAME'
-        ):
+    ):
         print('PFLD input shape({}): {}'.format(input.name, input.get_shape()))
         dense0 = denseBlock(input, dense_params["dense0"], True)
         print(dense0.name, dense0.get_shape())
@@ -82,7 +88,8 @@ def tfjs_inference(input, dense_params, batch_norm_params, weight_decay, num_lab
         #pooled = slim.avg_pool2d(dense6, 2, 2, 'VALID')
         print(pooled.name, pooled.get_shape())
         flattened = slim.flatten(pooled)
-        landmarks = slim.fully_connected(flattened, num_outputs=num_labels*2, activation_fn=None, scope='fc')
+        landmarks = slim.fully_connected(
+            flattened, num_outputs=num_labels*2, activation_fn=None, scope='fc')
         print("last layer name")
         print(landmarks.name, landmarks.get_shape())
 
@@ -98,7 +105,8 @@ def create_model(input, landmark, phase_train, args):
         'is_training': phase_train
     }
     dense_params = {
-        "dense0": {"in": 3, "out": 32, "name": 'dense0'}, # inc, outc, isfirst, name
+        # inc, outc, isfirst, name
+        "dense0": {"in": 3, "out": 32, "name": 'dense0'},
         "dense1": {"in": 32, "out": 64, "name": 'dense1'},
         "dense2": {"in": 64, "out": 128, "name": 'dense2'},
         "dense3": {"in": 128, "out": 256, "name": 'dense3'},
@@ -107,7 +115,8 @@ def create_model(input, landmark, phase_train, args):
     landmark_dim = int(landmark.get_shape()[-1])
     print("labels; ", args.num_labels)
     time.sleep(3)
-    landmarks_pre = tfjs_inference(input, dense_params, batch_norm_params, args.weight_decay, args.num_labels)
+    landmarks_pre = tfjs_inference(
+        input, dense_params, batch_norm_params, args.weight_decay, args.num_labels)
     # loss
     landmarks_loss = tf.reduce_sum(tf.square(landmarks_pre - landmark), axis=1)
     landmarks_loss = tf.reduce_mean(landmarks_loss)

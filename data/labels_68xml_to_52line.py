@@ -18,6 +18,7 @@ def del_68to52(lands):
 
     return new_lands
 
+
 def extract_annotations(labels_xml, label_num):
     # crerate attributes and shape each label
     # save labels in lines
@@ -34,7 +35,8 @@ def extract_annotations(labels_xml, label_num):
         for label_xml in img_xml:
             annotation = []
             box = label_xml.attrib
-            bbox = [box["left"], box["top"], str(int(box["left"])+int(box["width"])), str(int(box["top"])+int(box["height"]))]
+            bbox = [box["left"], box["top"], str(
+                int(box["left"])+int(box["width"])), str(int(box["top"])+int(box["height"]))]
             bbox = list(map(str, bbox))
             landmarks = []
             for land_xml in label_xml:
@@ -55,7 +57,8 @@ def extract_annotations(labels_xml, label_num):
             annotation.extend(attributes)
             annotation.extend([img_file])
             if len(annotation) != 52*2+11:
-                import pdb; pdb.set_trace()
+                import pdb
+                pdb.set_trace()
             try:
                 annotations.append(annotation)
                 image_num += 1
@@ -99,7 +102,7 @@ if __name__ == '__main__':
     DEBUG = False
     if len(sys.argv) == 3:
         xml = sys.argv[1]
-        img_dir = sys.argv[2] # img_dir or dlib
+        img_dir = sys.argv[2]  # img_dir or dlib
         tree = ET.parse(xml)
         labels_xml = tree.getroot()
     else:
@@ -108,14 +111,17 @@ if __name__ == '__main__':
 
     label_num = 68
     annotations = extract_annotations(labels_xml, label_num)
-    import pdb; pdb.set_trace()
+    import pdb
+    pdb.set_trace()
 
     if DEBUG:
         annotations = annotations[:10]
         os.makedirs("checklabels_xml_line", exist_ok=True)
         for anno in annotations:
-            landmarks = np.asarray(list(map(float, anno[:label_num*2])), dtype=np.float32).reshape(-1, 2)
-            bbox = np.asarray(list(map(int, anno[label_num*2:label_num*2+4])), dtype=np.int32)
+            landmarks = np.asarray(
+                list(map(float, anno[:label_num*2])), dtype=np.float32).reshape(-1, 2)
+            bbox = np.asarray(
+                list(map(int, anno[label_num*2:label_num*2+4])), dtype=np.int32)
 
             """
             def sort_box(box):
@@ -131,10 +137,12 @@ if __name__ == '__main__':
             else:
                 img_path = anno[label_num*2+10]
             img = cv2.imread(img_path)
-            cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (255, 0, 0), 1, 1)
+            cv2.rectangle(img, (bbox[0], bbox[1]),
+                          (bbox[2], bbox[3]), (255, 0, 0), 1, 1)
             for x, y in landmarks:
                 cv2.circle(img, (x, y), 3, (0, 0, 255))
-            cv2.imwrite(os.path.join("checklabels_xml_line", "show_labeled" + os.path.basename(img_path) + ".jpg"), img)
+            cv2.imwrite(os.path.join("checklabels_xml_line",
+                                     "show_labeled" + os.path.basename(img_path) + ".jpg"), img)
 
         print("finish debug")
         exit()

@@ -8,6 +8,7 @@ import sys
 
 debug = False
 
+
 class ImageDate():
     def __init__(self, line, img_dir):
         line = line.strip().split()
@@ -15,9 +16,11 @@ class ImageDate():
         label(147) = [136(68*2) points] + [4 bbox] + [6 attributes] + saveName
         """
         if len(line) != 147:
-            import pdb;pdb.set_trace()
+            import pdb
+            pdb.set_trace()
         self.list = line
-        self.landmark = np.asarray(list(map(float, line[:136])), dtype=np.float32).reshape(-1, 2)
+        self.landmark = np.asarray(
+            list(map(float, line[:136])), dtype=np.float32).reshape(-1, 2)
         self.landmark_lip = self.landmark[48:]
         # print("lip land num: ", len(self.landmark_lip))
         self.box = np.asarray(list(map(int, line[136:140])), dtype=np.int32)
@@ -45,7 +48,8 @@ class ImageDate():
             img = cv2.imread(self.path)
             height, width, _ = img.shape
         except Exception as e:
-            import pdb;pdb.set_trace()
+            import pdb
+            pdb.set_trace()
         # crop枠の左上 or 画像の左上縁
         dx = max(0, -x1)
         dy = max(0, -y1)
@@ -64,7 +68,8 @@ class ImageDate():
         if debug:
             # 表示して確認
             img_tmp = img.copy()
-            cv2.rectangle(img, (self.new_box[0], self.new_box[1]), (self.new_box[2], self.new_box[3]), (255, 0, 0), 1, 1)
+            cv2.rectangle(img, (self.new_box[0], self.new_box[1]),
+                          (self.new_box[2], self.new_box[3]), (255, 0, 0), 1, 1)
             for x, y in (self.landmark_lip + 0.5).astype(np.int32):
                 cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
             cv2.imwrite("./sample_lip.jpg", img_tmp)
@@ -78,16 +83,19 @@ class ImageDate():
 
         bb_str = ' '.join(list(map(str, self.new_box)))
         self.landmark_lip = self.landmark_lip.astype(np.int32)
-        landmark_lip_str = ' '.join(list(map(str, self.landmark_lip.reshape(-1).tolist())))
+        landmark_lip_str = ' '.join(
+            list(map(str, self.landmark_lip.reshape(-1).tolist())))
 
-        label = '{} {} {} {}\n'.format(landmark_lip_str, bb_str, attributes_str, self.path)
+        label = '{} {} {} {}\n'.format(
+            landmark_lip_str, bb_str, attributes_str, self.path)
 
         label_line = label.strip().split()
         if debug:
             print(len(label_line))
             print(label)
         if len(label_line) != 51:
-            import pdb; pdb.set_trace()
+            import pdb
+            pdb.set_trace()
 
         return label
 

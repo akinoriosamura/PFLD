@@ -58,13 +58,18 @@ class ImageDate():
         """
         if num_labels == 52:
             if len(line) != (num_labels * 2 + 11):
-                import pdb;pdb.set_trace()
+                import pdb
+                pdb.set_trace()
             assert(len(line) == (num_labels * 2 + 11))
-            self.tracked_points = [9, 11, 12, 14, 20, 23, 26, 29, 17, 19, 32, 38, 41, 4]
+            self.tracked_points = [9, 11, 12, 14, 20,
+                                   23, 26, 29, 17, 19, 32, 38, 41, 4]
             self.list = line
-            self.landmark = np.asarray(list(map(float, line[:num_labels * 2])), dtype=np.float32).reshape(-1, 2)
-            self.box = np.asarray(list(map(int, line[num_labels * 2:num_labels * 2 + 4])), dtype=np.int32)
-            flag = list(map(int, line[num_labels * 2 + 4: num_labels * 2 + 10]))
+            self.landmark = np.asarray(
+                list(map(float, line[:num_labels * 2])), dtype=np.float32).reshape(-1, 2)
+            self.box = np.asarray(
+                list(map(int, line[num_labels * 2:num_labels * 2 + 4])), dtype=np.int32)
+            flag = list(
+                map(int, line[num_labels * 2 + 4: num_labels * 2 + 10]))
             flag = list(map(bool, flag))
             self.pose = flag[0]
             self.expression = flag[1]
@@ -77,16 +82,20 @@ class ImageDate():
             self.num_labels = num_labels
             self.crop_base = crop_base
             self.debug_num = 0
-            #if debug:
+            # if debug:
             #    self.show_labels()
         elif num_labels == 68:
             if len(line) != 147:
-                import pdb;pdb.set_trace()
+                import pdb
+                pdb.set_trace()
             assert(len(line) == 147)
-            self.tracked_points = [17, 21, 22, 26, 36, 39, 42, 45, 31, 35, 48, 54, 57, 8]
+            self.tracked_points = [17, 21, 22, 26,
+                                   36, 39, 42, 45, 31, 35, 48, 54, 57, 8]
             self.list = line
-            self.landmark = np.asarray(list(map(float, line[:136])), dtype=np.float32).reshape(-1, 2)
-            self.box = np.asarray(list(map(int, line[136:140])), dtype=np.int32)
+            self.landmark = np.asarray(
+                list(map(float, line[:136])), dtype=np.float32).reshape(-1, 2)
+            self.box = np.asarray(
+                list(map(int, line[136:140])), dtype=np.int32)
             flag = list(map(int, line[140:146]))
             flag = list(map(bool, flag))
             self.pose = flag[0]
@@ -100,15 +109,17 @@ class ImageDate():
             self.num_labels = num_labels
             self.crop_base = crop_base
             self.debug_num = 0
-            #if debug:
+            # if debug:
             #    self.show_labels()
         elif num_labels == 20:
             if len(line) != 51:
-                import pdb;pdb.set_trace()
+                import pdb
+                pdb.set_trace()
             assert(len(line) == 51)
             # self.tracked_points = [17, 21, 22, 26, 36, 39, 42, 45, 31, 35, 48, 54, 57, 8]
             self.list = line
-            self.landmark = np.asarray(list(map(float, line[:40])), dtype=np.float32).reshape(-1, 2)
+            self.landmark = np.asarray(
+                list(map(float, line[:40])), dtype=np.float32).reshape(-1, 2)
             self.box = np.asarray(list(map(int, line[40:44])), dtype=np.int32)
             flag = list(map(int, line[44:50]))
             flag = list(map(bool, flag))
@@ -123,7 +134,7 @@ class ImageDate():
             self.num_labels = num_labels
             self.crop_base = crop_base
             self.debug_num = 0
-            #if debug:
+            # if debug:
             #    self.show_labels()
         else:
             print("len landmark is not invalid")
@@ -153,12 +164,13 @@ class ImageDate():
         os.makedirs("sample_show_labels", exist_ok=True)
         img = cv2.imread(self.path)
         # WFLW bbox: x_min_rect y_min_rect x_max_rect y_max_rect
-        cv2.rectangle(img, (self.box[0], self.box[1]), (self.box[2], self.box[3]), (0, 255, 0), 1, 1)
+        cv2.rectangle(img, (self.box[0], self.box[1]),
+                      (self.box[2], self.box[3]), (0, 255, 0), 1, 1)
         for x, y in self.landmark:
             cv2.circle(img, (x, y), 3, (0, 255, 0))
 
-        cv2.imwrite("sample_show_labels/sample_" + os.path.basename(self.path) + ".jpg", img)
-
+        cv2.imwrite("sample_show_labels/sample_" +
+                    os.path.basename(self.path) + ".jpg", img)
 
     def get_new_pcn_bb(self, label):
         pcn_scale = 1.5
@@ -179,11 +191,11 @@ class ImageDate():
 
     def debug_label(self, f_name, img, bb, landmark):
         img_tmp = img.copy()
-        cv2.rectangle(img_tmp, (bb[0], bb[1]), (bb[2], bb[3]), (0, 255, 0), 1, 1)
+        cv2.rectangle(img_tmp, (bb[0], bb[1]),
+                      (bb[2], bb[3]), (0, 255, 0), 1, 1)
         for x, y in ((landmark) + 0.5).astype(np.int32):
             cv2.circle(img_tmp, (x, y), 2, (0, 255, 0))
         cv2.imwrite(f_name, img_tmp)
-
 
     def load_data(self, is_train, rotate, repeat, mirror=None):
         if (mirror is not None):
@@ -197,7 +209,8 @@ class ImageDate():
         try:
             height, width, _ = img.shape
         except Exception as e:
-            import pdb;pdb.set_trace()
+            import pdb
+            pdb.set_trace()
         if crop_base == "landmark":
             xy = np.min(self.landmark, axis=0).astype(np.int32)
             zz = np.max(self.landmark, axis=0).astype(np.int32)
@@ -212,7 +225,8 @@ class ImageDate():
             x2, y2 = xy + boxsize
             if debug:
                 bb_tmp = [x1, y1, x2, y2]
-                self.debug_label("./sample_pcn2.jpg", img, bb_tmp, self.landmark)
+                self.debug_label("./sample_pcn2.jpg", img,
+                                 bb_tmp, self.landmark)
 
         elif crop_base == "bb":
             x1 = self.box[0]
@@ -225,8 +239,8 @@ class ImageDate():
             center = (xy + wh / 2).astype(np.int32)
             if debug:
                 bb_tmp = [x1, y1, x2, y2]
-                self.debug_label("./sample_pcn2.jpg", img, bb_tmp, self.landmark)
-
+                self.debug_label("./sample_pcn2.jpg", img,
+                                 bb_tmp, self.landmark)
 
         elif crop_base == "pcn":
             # 顔枠で切り抜き
@@ -244,8 +258,10 @@ class ImageDate():
 
             if debug:
                 w_tmp = label_dict["bbox"]["w"]
-                bb_tmp = [label_dict["bbox"]["x"], label_dict["bbox"]["y"], label_dict["bbox"]["x"]+w_tmp, label_dict["bbox"]["y"]+w_tmp]
-                self.debug_label("./sample_pcn.jpg", img, bb_tmp, self.landmark)
+                bb_tmp = [label_dict["bbox"]["x"], label_dict["bbox"]["y"],
+                          label_dict["bbox"]["x"]+w_tmp, label_dict["bbox"]["y"]+w_tmp]
+                self.debug_label("./sample_pcn.jpg", img,
+                                 bb_tmp, self.landmark)
 
             new_bb = self.get_new_pcn_bb(label_dict)
 
@@ -259,7 +275,8 @@ class ImageDate():
             center = (xy + wh / 2).astype(np.int32)
             if debug:
                 bb_tmp = [x1, y1, x2, y2]
-                self.debug_label("./sample_pcn2.jpg", img, bb_tmp, self.landmark)
+                self.debug_label("./sample_pcn2.jpg", img,
+                                 bb_tmp, self.landmark)
 
         else:
             print("crop base error")
@@ -280,8 +297,9 @@ class ImageDate():
         imgT = img[y1:y2, x1:x2]
         if (dx > 0 or dy > 0 or edx > 0 or edy > 0):
             # 画像をコピーし周りに境界を作成
-            imgT = cv2.copyMakeBorder(imgT, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
-                # 表示して確認
+            imgT = cv2.copyMakeBorder(
+                imgT, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
+            # 表示して確認
 
         if imgT.shape[0] == 0 or imgT.shape[1] == 0:
             # 顔枠サイズが0なら
@@ -312,11 +330,12 @@ class ImageDate():
                 bb_tmp = [x1, y1, x2, y2]
                 land_tmp = self.landmark - xy
                 self.debug_label("./sample_pcn4.jpg", imgT, bb_tmp, land_tmp)
-            import pdb; pdb.set_trace()
+            import pdb
+            pdb.set_trace()
         self.imgs.append(imgT)
         self.landmarks.append(landmark)
 
-        if rotate=="rotate" and is_train:
+        if rotate == "rotate" and is_train:
             # =========データ拡張=========
             repeat_num = 0
             while len(self.imgs) < repeat:
@@ -329,10 +348,13 @@ class ImageDate():
                 cy = cy + int(np.random.randint(-boxsize * 0.1, boxsize * 0.1))
                 M, landmark = apply_rotate(angle, (cx, cy), self.landmark)
 
-                imgT = cv2.warpAffine(img, M, (int(img.shape[1] * 1.1), int(img.shape[0] * 1.1)))
+                imgT = cv2.warpAffine(
+                    img, M, (int(img.shape[1] * 1.1), int(img.shape[0] * 1.1)))
                 wh = np.ptp(landmark, axis=0).astype(np.int32) + 1
-                size = np.random.randint(int(np.min(wh)), np.ceil(np.max(wh) * 1.25))
-                xy = np.asarray((cx - size // 2, cy - size // 2), dtype=np.int32)
+                size = np.random.randint(
+                    int(np.min(wh)), np.ceil(np.max(wh) * 1.25))
+                xy = np.asarray(
+                    (cx - size // 2, cy - size // 2), dtype=np.int32)
                 landmark = (landmark - xy) / size
                 if (landmark < 0).any() or (landmark > 1).any():
                     continue
@@ -352,7 +374,8 @@ class ImageDate():
 
                 imgT = imgT[y1:y2, x1:x2]
                 if (dx > 0 or dy > 0 or edx > 0 or edy > 0):
-                    imgT = cv2.copyMakeBorder(imgT, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
+                    imgT = cv2.copyMakeBorder(
+                        imgT, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
 
                 imgT = cv2.resize(imgT, (self.image_size, self.image_size))
 
@@ -368,14 +391,16 @@ class ImageDate():
                     img_tmp = imgT.copy()
                     for x, y in (landmark * self.image_size + 0.5).astype(np.int32):
                         cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
-                    cv2.imwrite(os.path.join("sample_labels", "sample_" + str(self.debug_num) + ".jpg"), img_tmp)
+                    cv2.imwrite(os.path.join(
+                        "sample_labels", "sample_" + str(self.debug_num) + ".jpg"), img_tmp)
 
                 self.imgs.append(imgT)
                 self.landmarks.append(landmark)
 
     def save_data(self, path, prefix):
         # attributeは特にいじらず保存
-        attributes = [self.pose, self.expression, self.illumination, self.make_up, self.occlusion, self.blur]
+        attributes = [self.pose, self.expression, self.illumination,
+                      self.make_up, self.occlusion, self.blur]
         attributes = np.asarray(attributes, dtype=np.int32)
         attributes_str = ' '.join(list(map(str, attributes)))
         labels = []
@@ -389,15 +414,20 @@ class ImageDate():
             # tracked pointsからpitch yaw rollを計算し保存
             euler_angles_landmark = []
             for index in self.tracked_points:
-                euler_angles_landmark.append([landmark[index][0] * img.shape[0], landmark[index][1] * img.shape[1]])
-            euler_angles_landmark = np.asarray(euler_angles_landmark).reshape((-1, 28))
-            pitch, yaw, roll = calculate_pitch_yaw_roll(euler_angles_landmark[0], self.image_size, self.image_size)
+                euler_angles_landmark.append(
+                    [landmark[index][0] * img.shape[0], landmark[index][1] * img.shape[1]])
+            euler_angles_landmark = np.asarray(
+                euler_angles_landmark).reshape((-1, 28))
+            pitch, yaw, roll = calculate_pitch_yaw_roll(
+                euler_angles_landmark[0], self.image_size, self.image_size)
             euler_angles = np.asarray((pitch, yaw, roll), dtype=np.float32)
             euler_angles_str = ' '.join(list(map(str, euler_angles)))
 
-            landmark_str = ' '.join(list(map(str, landmark.reshape(-1).tolist())))
+            landmark_str = ' '.join(
+                list(map(str, landmark.reshape(-1).tolist())))
 
-            label = '{} {} {} {}\n'.format(save_path, landmark_str, attributes_str, euler_angles_str)
+            label = '{} {} {} {}\n'.format(
+                save_path, landmark_str, attributes_str, euler_angles_str)
             labels.append(label)
         return labels
 
@@ -486,7 +516,7 @@ if __name__ == '__main__':
     landmarkTestName = config.get(section, 'landmarkTestName')
     outTrainDir = config.get(section, 'outTrainDir')
     outTestDir = config.get(section, 'outTestDir')
-    if rotate=="rotate":
+    if rotate == "rotate":
         print("rotate")
         outTrainDir = "rotated_" + outTrainDir
         outTestDir = "rotated_" + outTestDir
@@ -520,5 +550,6 @@ if __name__ == '__main__':
             is_train = False
         else:
             is_train = True
-        imgs = get_dataset_list(outDir, landmarkDir, is_train, rotate, int(num_labels), image_size, dataset, crop_base)
+        imgs = get_dataset_list(outDir, landmarkDir, is_train, rotate, int(
+            num_labels), image_size, dataset, crop_base)
     print('end')

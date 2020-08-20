@@ -85,9 +85,12 @@ def main(args):
                                      name='image_batch')
         print("landmark labels num: ", args.num_labels*2)
         time.sleep(3)
-        landmark_batch = tf.placeholder(tf.float32, shape=(None, args.num_labels*2), name='landmark_batch')
-        attribute_batch = tf.placeholder(tf.int32, shape=(None, 6), name='attribute_batch')
-        euler_angles_gt_batch = tf.placeholder(tf.float32, shape=(None, 3), name='euler_angles_gt_batch')
+        landmark_batch = tf.placeholder(tf.float32, shape=(
+            None, args.num_labels*2), name='landmark_batch')
+        attribute_batch = tf.placeholder(
+            tf.int32, shape=(None, 6), name='attribute_batch')
+        euler_angles_gt_batch = tf.placeholder(
+            tf.float32, shape=(None, 3), name='euler_angles_gt_batch')
 
         list_ops['image_batch'] = image_batch
         list_ops['landmark_batch'] = landmark_batch
@@ -107,15 +110,18 @@ def main(args):
         attributes_w_n = tf.to_float(attribute_batch[:, 1:6])
         # _num = attributes_w_n.shape[0]
         mat_ratio = tf.reduce_mean(attributes_w_n, axis=0)
-        mat_ratio = tf.map_fn(lambda x: (tf.cond(x > 0, lambda: 1 / x, lambda: float(args.batch_size))), mat_ratio)
+        mat_ratio = tf.map_fn(lambda x: (
+            tf.cond(x > 0, lambda: 1 / x, lambda: float(args.batch_size))), mat_ratio)
         attributes_w_n = tf.convert_to_tensor(attributes_w_n * mat_ratio)
         attributes_w_n = tf.reduce_sum(attributes_w_n, axis=1)
         list_ops['attributes_w_n_batch'] = attributes_w_n
 
         L2_loss = tf.add_n(tf.losses.get_regularization_losses())
-        _sum_k = tf.reduce_sum(tf.map_fn(lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
-        loss_sum = tf.reduce_sum(tf.square(landmark_batch - landmarks_pre), axis=1)
-        loss_sum = tf.reduce_mean(loss_sum * _sum_k)#  * attributes_w_n)
+        _sum_k = tf.reduce_sum(tf.map_fn(
+            lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
+        loss_sum = tf.reduce_sum(
+            tf.square(landmark_batch - landmarks_pre), axis=1)
+        loss_sum = tf.reduce_mean(loss_sum * _sum_k)  # * attributes_w_n)
         loss_sum += L2_loss
 
         # quantize
@@ -134,11 +140,12 @@ def main(args):
             )
             """
             tf.contrib.quantize.create_training_graph(input_graph=g,
-                                            quant_delay=2000000)  # about in WFLW 6 epoch
+                                                      quant_delay=2000000)  # about in WFLW 6 epoch
         else:
             print("no quantize, so float: ", args.num_quant)
 
-        train_op, lr_op = train_model(loss_sum, global_step, num_train_file, args)
+        train_op, lr_op = train_model(
+            loss_sum, global_step, num_train_file, args)
 
         list_ops['landmarks'] = landmarks_pre
         list_ops['L2_loss'] = L2_loss
@@ -146,11 +153,16 @@ def main(args):
         list_ops['train_op'] = train_op
         list_ops['lr_op'] = lr_op
 
-        test_mean_error = tf.Variable(tf.constant(0.0), dtype=tf.float32, name='ME')
-        test_failure_rate = tf.Variable(tf.constant(0.0), dtype=tf.float32, name='FR')
-        test_10_loss = tf.Variable(tf.constant(0.0), dtype=tf.float32, name='TestLoss')
-        train_loss = tf.Variable(tf.constant(0.0), dtype=tf.float32, name='TrainLoss')
-        train_loss_l2 = tf.Variable(tf.constant(0.0), dtype=tf.float32, name='TrainLoss2')
+        test_mean_error = tf.Variable(
+            tf.constant(0.0), dtype=tf.float32, name='ME')
+        test_failure_rate = tf.Variable(
+            tf.constant(0.0), dtype=tf.float32, name='FR')
+        test_10_loss = tf.Variable(tf.constant(
+            0.0), dtype=tf.float32, name='TestLoss')
+        train_loss = tf.Variable(tf.constant(
+            0.0), dtype=tf.float32, name='TrainLoss')
+        train_loss_l2 = tf.Variable(tf.constant(
+            0.0), dtype=tf.float32, name='TrainLoss2')
         tf.summary.scalar('test_mean_error', test_mean_error)
         tf.summary.scalar('test_failure_rate', test_failure_rate)
         tf.summary.scalar('test_10_loss', test_10_loss)
@@ -161,7 +173,8 @@ def main(args):
         saver = tf.train.Saver(save_params, max_to_keep=None)
 
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0)
-        sess = tf.Session(graph=g, config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=False, log_device_placement=False))
+        sess = tf.Session(graph=g, config=tf.ConfigProto(
+            gpu_options=gpu_options, allow_soft_placement=False, log_device_placement=False))
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 
@@ -183,7 +196,8 @@ def main(args):
                     ckpt = tf.train.get_checkpoint_state(pretrained_model)
                     model_path = ckpt.model_checkpoint_path
                     assert (ckpt and model_path)
-                    epoch_start = int(model_path[model_path.find('model.ckpt-') + 11:]) + 1
+                    epoch_start = int(
+                        model_path[model_path.find('model.ckpt-') + 11:]) + 1
                     print('Checkpoint file: {}'.format(model_path))
                     saver.restore(sess, model_path)
 
@@ -196,7 +210,8 @@ def main(args):
             for epoch in range(epoch_start, args.max_epoch):
                 print("train start")
                 start = time.time()
-                train_L, train_L2 = train(sess, epoch_size, epoch, list_ops, args)
+                train_L, train_L2 = train(
+                    sess, epoch_size, epoch, list_ops, args)
                 print("train time: {}" .format(time.time() - start))
 
                 summary, _, _ = sess.run(
@@ -210,7 +225,8 @@ def main(args):
 
                 checkpoint_path = os.path.join(model_dir, 'model.ckpt')
                 metagraph_path = os.path.join(model_dir, 'model.meta')
-                saver.save(sess, checkpoint_path, global_step=epoch, write_meta_graph=False)
+                saver.save(sess, checkpoint_path, global_step=epoch,
+                           write_meta_graph=False)
                 if not os.path.exists(metagraph_path):
                     saver.export_meta_graph(metagraph_path)
                 print("save checkpoint: {}".format(checkpoint_path))
@@ -230,7 +246,7 @@ def main(args):
                         ]
                     )
                     train_write.add_summary(summary, epoch)
-                
+
 
 def train(sess, epoch_size, epoch, list_ops, args):
 
@@ -238,7 +254,8 @@ def train(sess, epoch_size, epoch, list_ops, args):
 
     for i in range(epoch_size):
         # TODO : get the w_n and euler_angles_gt_batch
-        images, landmarks, attributes, eulers = sess.run([image_batch, landmarks_batch, attribute_batch, euler_batch])
+        images, landmarks, attributes, eulers = sess.run(
+            [image_batch, landmarks_batch, attribute_batch, euler_batch])
 
         '''
         calculate the w_n: return the batch [-1,1]
@@ -265,7 +282,8 @@ def train(sess, epoch_size, epoch, list_ops, args):
                                          list_ops['L2_loss']], feed_dict=feed_dict)
 
         if ((i + 1) % 10) == 0 or (i + 1) == epoch_size:
-            Epoch = 'Epoch:[{:<4}][{:<4}/{:<4}]'.format(epoch, i + 1, epoch_size)
+            Epoch = 'Epoch:[{:<4}][{:<4}/{:<4}]'.format(
+                epoch, i + 1, epoch_size)
 
             Loss = 'Loss {:2.3f}\tL2_loss {:2.3f}'.format(loss, L2_loss)
             print('{}\t{}\t lr {:2.3}'.format(Epoch, Loss, lr))
@@ -289,7 +307,8 @@ def test(sess, list_ops, args):
     print("test epoch size: ", epoch_size)
     for i in range(epoch_size):  # batch_num
         print("start epoch: ", i)
-        images, landmarks, attributes, eulers = sess.run([image_batch, landmarks_batch, attribute_batch, euler_batch])
+        images, landmarks, attributes, eulers = sess.run(
+            [image_batch, landmarks_batch, attribute_batch, euler_batch])
         feed_dict = {
             list_ops['image_batch']: images,
             list_ops['landmark_batch']: landmarks,
@@ -304,7 +323,8 @@ def test(sess, list_ops, args):
 
         for k in range(pre_landmarks.shape[0]):
             error_all_points = 0
-            for count_point in range(pre_landmarks.shape[1] // 2):  # num points
+            # num points
+            for count_point in range(pre_landmarks.shape[1] // 2):
                 error_diff = pre_landmarks[k][(count_point * 2):(count_point * 2 + 2)] - \
                     landmarks[k][(count_point * 2):(count_point * 2 + 2)]
                 error = np.sqrt(np.sum(error_diff * error_diff))
@@ -326,16 +346,17 @@ def test(sess, list_ops, args):
                 time.sleep(3)
                 interocular_distance = np.sqrt(
                     np.sum(
-                        pow((landmarks[k][left_eye_edge*2:left_eye_edge*2+2] - landmarks[k][right_eye_edge*2:right_eye_edge*2+2]), 2)
-                        )
+                        pow((landmarks[k][left_eye_edge*2:left_eye_edge*2+2] -
+                             landmarks[k][right_eye_edge*2:right_eye_edge*2+2]), 2)
+                    )
                 )
-                error_norm = error_all_points / (interocular_distance * args.num_labels)
+                error_norm = error_all_points / \
+                    (interocular_distance * args.num_labels)
             else:
                 error_norm = error_all_points
             landmark_error += error_norm
             if error_norm >= 0.02:
                 landmark_01_num += 1
-
 
         # if i == 0:
         #     image_save_path = os.path.join(sample_path, 'img')
@@ -390,7 +411,8 @@ def save_image_example(sess, list_ops, args):
     image_batch, landmarks_batch, attribute_batch = list_ops['train_next_element']
 
     for b in range(save_nbatch):
-        images, landmarks, attributes = sess.run([image_batch, landmarks_batch, attribute_batch])
+        images, landmarks, attributes = sess.run(
+            [image_batch, landmarks_batch, attribute_batch])
         for i in range(images.shape[0]):
             img = images[i] * 256
             img = img.astype(np.uint8)
@@ -417,8 +439,10 @@ def parse_arguments(argv):
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--file_list', type=str, default='data/train_data/list.txt')
-    parser.add_argument('--test_list', type=str, default='data/test_data/list.txt')
+    parser.add_argument('--file_list', type=str,
+                        default='data/train_data/list.txt')
+    parser.add_argument('--test_list', type=str,
+                        default='data/test_data/list.txt')
     parser.add_argument('--seed', type=int, default=666)
     parser.add_argument('--max_epoch', type=int, default=1000)
     parser.add_argument('--image_size', type=int, default=112)
@@ -436,7 +460,8 @@ def parse_arguments(argv):
     parser.add_argument('--depth_multi', type=float, default=1)
     parser.add_argument('--num_quant', type=int, default=64)
     parser.add_argument('--tfrecords_dir', type=str, default='/data/tfrecords')
-    parser.add_argument('--is_augment', type=str2bool, default=False, help='Whether to augment')
+    parser.add_argument('--is_augment', type=str2bool,
+                        default=False, help='Whether to augment')
 
     return parser.parse_args(argv)
 

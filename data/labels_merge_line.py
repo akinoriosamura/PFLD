@@ -16,7 +16,8 @@ if __name__ == "__main__":
     with open(txt2_path, 'r') as f:
         lines_2 = f.readlines()
 
-    import pdb;pdb.set_trace()
+    import pdb
+    pdb.set_trace()
 
     lines = lines_1 + lines_2
 

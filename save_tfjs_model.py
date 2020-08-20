@@ -73,11 +73,12 @@ def create_save_model(args, model_dir, graph, sess):
 def create_coreml_model(model_dir, args):
     # coreml変換
     tf_converter.convert(tf_model_path=os.path.join(model_dir, "original_98_frozen.pb"),
-                        mlmodel_path=os.path.join(model_dir, 'pfld.mlmodel'),
-                        input_name_shape_dict={'image_batch:0':[1,args.image_size,args.image_size,3]},
-                        output_feature_names=['fc/BiasAdd:0'],
-                        add_custom_layers=True
-                        )
+                         mlmodel_path=os.path.join(model_dir, 'pfld.mlmodel'),
+                         input_name_shape_dict={'image_batch:0': [
+                             1, args.image_size, args.image_size, 3]},
+                         output_feature_names=['fc/BiasAdd:0'],
+                         add_custom_layers=True
+                         )
 
 
 def main(args):
@@ -149,7 +150,8 @@ def parse_arguments(argv):
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--test_list', type=str, default='data/test_data/list.txt')
+    parser.add_argument('--test_list', type=str,
+                        default='data/test_data/list.txt')
     parser.add_argument('--seed', type=int, default=666)
     parser.add_argument('--max_epoch', type=int, default=1000)
     parser.add_argument('--image_size', type=int, default=112)
@@ -165,7 +167,8 @@ def parse_arguments(argv):
     parser.add_argument('--save_image_example', action='store_false')
     parser.add_argument('--depth_multi', type=float, default=1)
     parser.add_argument('--num_quant', type=int, default=64)
-    parser.add_argument('--is_augment', type=str2bool, default=False, help='Whether to augment')
+    parser.add_argument('--is_augment', type=str2bool,
+                        default=False, help='Whether to augment')
 
     return parser.parse_args(argv)
 
