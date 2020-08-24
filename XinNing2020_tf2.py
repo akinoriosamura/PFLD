@@ -103,7 +103,7 @@ class XinNingNetwork(Model):
             padding=padding,
             activation=tf.nn.relu6,
             use_bias=use_bias,
-            kernel_initializer='glorot_uniform',
+            kernel_initializer=tf.compat.v1.truncated_normal_initializer(stddev=0.01),
             bias_initializer='zeros',
             kernel_regularizer=tf.keras.regularizers.l2(0.01),
             trainable=trainable,
@@ -124,6 +124,7 @@ class XinNingNetwork(Model):
             units,
             use_bias=True,
             activation=tf.nn.relu6,
+            kernel_initializer=tf.compat.v1.truncated_normal_initializer(stddev=0.01),
             kernel_regularizer=tf.keras.regularizers.l2(0.01),
             trainable=trainable,
             name=name
@@ -177,6 +178,11 @@ class XinNingNetwork(Model):
         # land is normalized so return by img size multiply
         land_x = tf.math.multiply(tf.add(land[0], ms[0]), self.img_size)
         land_y = tf.math.multiply(tf.add(land[1], ms[1]), self.img_size)
+
+        # land_x = tf.math.multiply(land[0], self.img_size)
+        # land_y = tf.math.multiply(land[1], self.img_size)
+        # land_x = tf.add(land[0], ms[0])
+        # land_y = tf.add(land[1], ms[1])
         _xx = tf.pow(tf.subtract(tf.cast(xx, dtype=tf.float32), land_x), 2)
         _yy = tf.pow(tf.subtract(tf.cast(yy, dtype=tf.float32), land_y), 2)
         d2 = tf.add(_xx, _yy)

@@ -18,6 +18,8 @@ tf.keras.backend.set_floatx('float32')
 
 
 def main(args):
+    train_stage = 'stage2'
+
     debug = (args.debug == 'True')
     print("args: ", args)
     np.random.seed(args.seed)
@@ -52,7 +54,6 @@ def main(args):
 
     # ================== create models ================
     print("=================== create models ===============")
-    train_stage = 'stage2'
     model = XinNingNetwork(args.num_labels, args.image_size, mean_shape, train_stage)
     # import pdb;pdb.set_trace()
     # get_model_summary(model, [args.image_size, args.image_size, 3])
@@ -63,10 +64,12 @@ def main(args):
         debug_list = []
         debug_list.append(outputs[0])
         landmarks_pre = tf.add(tf.cast(mean_shape, dtype=tf.float32), outputs[0])
+        # landmarks_pre = outputs[0]
         if train_stage == 'stage2':
             debug_list.append(landmarks_pre)
             debug_list.append(outputs[1])
             landmarks_pre = tf.add(landmarks_pre, outputs[1])
+            # landmarks_pre = outputs[1]
         debug_list.append(landmarks_pre)
 
         landmark_batch, euler_batch = targets[0], targets[1]
@@ -83,6 +86,10 @@ def main(args):
             tf.square(landmark_batch - landmarks_pre), axis=1)
         loss_sum = tf.reduce_mean(loss_sum)  # * _sum_k)#  * attributes_w_n)
         loss_sum += L2_loss
+        debug_list.append(landmark_batch - landmarks_pre)
+        debug_list.append(tf.square(landmark_batch - landmarks_pre))
+        debug_list.append(tf.reduce_sum(tf.square(landmark_batch - landmarks_pre), axis=1))
+        debug_list.append(tf.reduce_mean(loss_sum))
 
         return loss_sum, L2_loss, debug_list
 
@@ -167,13 +174,18 @@ def main(args):
         checkpoint_path = os.path.join(model_dir, 'model.ckpt')
         root = tf.train.Checkpoint(optimizer=optimizer, model=model)
         root.save(checkpoint_path)
+        print("save checkpoint: {}".format(checkpoint_path))
         savedmodel_path = os.path.join(model_dir, 'SavedModel/')
         tf.saved_model.save(model, savedmodel_path)
-        print("save checkpoint: {}".format(checkpoint_path))
         print("save SavedModel: {}".format(savedmodel_path))
+        converter = tf.lite.TFLiteConverter.from_saved_model(savedmodel_path)
+        tflite_model = converter.convert()
+        with open(os.path.join(model_dir, "xinning.tflite"), 'wb') as f:
+            f.write(tflite_model)
+        print("save tflite: {}".format(os.path.join(model_dir, "xinning.tflite")))
         print("trainable v num: ", len(model.trainable_variables))
 
-        if epoch % 10 == 0 and epoch != 0 and epoch > 0:
+        if epoch % 20 == 0 and epoch != 0 and epoch > 0:
             # import pdb;pdb.set_trace()
             print("test start")
             start = time.time()
@@ -198,8 +210,10 @@ def test(batch_test_dataset, num_test_file, model, args, mean_shape, train_stage
         outputs = test_step(model, image_batch)
         # import pdb;pdb.set_trace()
         landmarks_pre = (outputs[0] + mean_shape).numpy()
+        # landmarks_pre = outputs[0].numpy()
         if train_stage == 'stage2':
             landmarks_pre += outputs[1]
+            # landmarks_pre = outputs[1].numpy()
         diff = landmarks_pre - landmarks_batch
         loss = np.sum(diff * diff)
         loss_sum += loss

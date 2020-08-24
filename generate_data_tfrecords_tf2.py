@@ -46,7 +46,6 @@ class TfrecordsLoader():
         self.euler_angles_shape = euler_angle.shape
         self.images = None
         self.records_list = []
-        self.meanShape = None
 
     def set_data(self, _lines):
         filenames, landmarks, attributes, euler_angles = [], [], [], []
@@ -73,7 +72,7 @@ class TfrecordsLoader():
         elif self.model_type == 'xin':
             print(" get scale landmark in xin")
             self.landmarks = np.asarray(
-                landmarks, dtype=np.float32)  # * self.args.image_size
+                landmarks, dtype=np.float32)#  * self.args.image_size
             lands = self.landmarks.copy()
             for land in lands:
                 if self.sumShape is None:
@@ -244,7 +243,7 @@ class TfrecordsLoader():
             lands = lands.reshape(-1, 2)
             if self.model_type == 'pfld':
                 # print(" scale: h, w in save anno in pfld")
-                lands = np.asarray(lands * [h, w], np.int32)
+                lands = np.asarray(lands, np.int32) # * [h, w], np.int32)
             elif self.model_type == 'xin':
                 # print(" no scale in save anno in xin")
                 lands = np.asarray(lands * [h, w], np.int32)

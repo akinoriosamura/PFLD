@@ -66,11 +66,12 @@ def main(args):
     # ============ resotre pretrain =============
     print("================= resotre pretrain if exist =================")
     if args.pretrained_model:
-        pretrained_model = args.pretrained_model
-        root = tf.train.Checkpoint(optimizer=optimizer, model=model)
-        root.restore(tf.train.latest_checkpoint(pretrained_model))
-        print('Restore from model directory: {}'.format(pretrained_model))
+        # pretrained_model = args.pretrained_model
+        # root = tf.train.Checkpoint(optimizer=optimizer, model=model)
+        # root.restore(tf.train.latest_checkpoint(pretrained_model))
+        # print('Restore from model directory: {}'.format(pretrained_model))
         # import pdb;pdb.set_trace()
+        model = tf.keras.models.load_model(os.path.join(args.pretrained_model, ("SavedModel")))
 
     # import pdb;pdb.set_trace()
     print("test start")
@@ -86,88 +87,104 @@ def test(batch_test_dataset, num_test_file, model, args, mean_shape, train_stage
     _NRMSE = 0
     landmark_error = 0
     landmark_01_num = 0
+    all_num = 0
 
     epoch_size = math.ceil(num_test_file * 1.0 / args.batch_size)
     print("num test file: ", num_test_file)
     print("test epoch size: ", epoch_size)
     for i, (image_batch, landmarks_batch, attribute_batch, euler_batch) in enumerate(batch_test_dataset):  # batch_num
         print("start epoch: ", i)
+        all_num += 1
+        # import pdb;pdb.set_trace()
         outputs = test_step(model, image_batch)
         # import pdb;pdb.set_trace()
         landmarks_pre = (outputs[0] + mean_shape).numpy()
+        # landmarks_pre = outputs[0].numpy()
         if train_stage == 'stage2':
             landmarks_pre += outputs[1]
-        diff = landmarks_pre - landmarks_batch
-        loss = np.sum(diff * diff)
-        loss_sum += loss
 
-        for k in range(landmarks_pre.shape[0]):
+        for k in range(len(landmarks_pre)):
             # save label image
             # import pdb;pdb.set_trace()
-            annotate_landmarks_pre = landmarks_pre[k].reshape(-1, 2) * args.image_size
-            img_tmp = image_batch[k].numpy().copy()
+            one_image = image_batch[k]
+            one_landmark_pre = landmarks_pre[k]
+            one_landmark = landmarks_batch[k].numpy()
+
+            annotate_landmarks_pre = one_landmark_pre.reshape(-1, 2) * args.image_size
+            img_tmp = one_image.numpy().copy()
             img_tmp = (img_tmp * 127.5) + 127.5
             for (x, y) in annotate_landmarks_pre.astype(np.int32):
                 cv2.circle(img_tmp, (x, y), 1, (0, 255, 0), 1)
             print(os.path.join(args.out_dir, str(k)+".jpg"))
             cv2.imwrite(os.path.join(args.out_dir, str(k)+".jpg"), img_tmp)
 
+            # 目の両端
+            if args.num_labels == 98:
+                left_eye_edge = 60
+                right_eye_edge = 72
+            elif args.num_labels == 68:
+                left_eye_edge = 36
+                right_eye_edge = 45
+            elif args.num_labels == 52:
+                left_eye_edge = 20
+                right_eye_edge = 29
+            else:
+                print("eye error")
+                exit()
+
             # calculate error
             error_all_points = 0
             # num points
-            for count_point in range(landmarks_pre[k].shape[0] // 2):
-                error_diff = landmarks_pre[k][(count_point * 2):(count_point * 2 + 2)] - \
-                    landmarks_batch[k].numpy()[(count_point * 2):(count_point * 2 + 2)]
+            for count_point in range(len(one_landmark_pre) // 2):
+                error_diff = one_landmark_pre[(count_point * 2):(count_point * 2 + 2)] - \
+                    one_landmark[(count_point * 2):(count_point * 2 + 2)]
                 error = np.sqrt(np.sum(error_diff * error_diff))
                 error_all_points += error
-            if (args.num_labels == 52) or (args.num_labels == 68) or (args.num_labels == 98):
-                # 目の両端
-                if args.num_labels == 98:
-                    left_eye_edge = 60
-                    right_eye_edge = 72
-                elif args.num_labels == 68:
-                    left_eye_edge = 36
-                    right_eye_edge = 45
-                elif args.num_labels == 52:
-                    left_eye_edge = 20
-                    right_eye_edge = 29
-                else:
-                    print("eye error")
-                    exit()
 
-                # RMSE
-                landmark_2 = landmarks_batch[k].numpy().reshape(-1, 2)
-                diff_land = landmarks_pre[k].reshape(-1, 2) - landmark_2
-                dis_land = [(np.linalg.norm(one_diff)*args.image_size)
-                            ** 2 for one_diff in diff_land]
-                _RMSE = np.mean(dis_land)
-                #eye_diff_land = landmarks_pre[k].reshape(-1, 2) - landmark.reshape(-1, 2)
-                #eye_dis_land = [np.linalg.norm(one_diff) for one_diff in diff_land]
-                d_eyes = (np.linalg.norm(
-                    landmark_2[left_eye_edge] - landmark_2[right_eye_edge])*args.image_size)**2
-                RMSE = _RMSE / d_eyes
-                print("RMSE: ", RMSE)
-                if np.isnan(RMSE) or np.isinf(RMSE):  # or RMSE > 50:
-                    import pdb
-                    pdb.set_trace()
-                _NRMSE += RMSE
+            # loss
+            diff = one_landmark_pre - one_landmark
+            loss = np.sum(diff * diff)
+            loss_sum += loss
 
-                time.sleep(3)
-                interocular_distance = np.sqrt(
-                    np.sum(
-                        pow((landmarks_batch[k].numpy()[left_eye_edge*2:left_eye_edge*2+2] -
-                             landmarks_batch[k].numpy()[right_eye_edge*2:right_eye_edge*2+2]), 2)
-                    )
+            # RMSE
+            one_landmark_2 = one_landmark.reshape(-1, 2)
+            one_landmark_pre_2 = one_landmark_pre.reshape(-1, 2)
+            # diff_land = one_landmark_pre.reshape(-1, 2) - landmark_2
+            # dis_land = [(np.linalg.norm(one_diff)*args.image_size) * for one_diff in diff_land]
+            # _RMSE = np.mean(dis_land)
+            #eye_diff_land = one_landmark_pre.reshape(-1, 2) - landmark.reshape(-1, 2)
+            #eye_dis_land = [np.linalg.norm(one_diff) for one_diff in diff_land]
+            # d_eyes = (np.linalg.norm(
+            #     landmark_2[left_eye_edge] - landmark_2[right_eye_edge])*args.image_size)**2
+            # import pdb;pdb.set_trace()
+            diff_2 = one_landmark_pre_2 - one_landmark_2
+            _RMSE = np.mean(np.sum(diff_2 * diff_2, 1))
+            diff_eyes = np.array([diff[left_eye_edge * 2], diff[left_eye_edge * 2 + 1], diff[right_eye_edge * 2], diff[right_eye_edge * 2 + 1]])
+            d_eyes = np.sum(diff_eyes * diff_eyes)
+            RMSE = _RMSE / d_eyes
+            print("RMSE: ", RMSE)
+            if np.isnan(RMSE) or np.isinf(RMSE):  # or RMSE > 50:
+                import pdb
+                pdb.set_trace()
+            _NRMSE += RMSE
+
+            time.sleep(3)
+            interocular_distance = np.sqrt(
+                np.sum(
+                    pow((one_landmark[left_eye_edge*2:left_eye_edge*2+2] -
+                            one_landmark[right_eye_edge*2:right_eye_edge*2+2]), 2)
                 )
-                error_norm = error_all_points / \
-                    (interocular_distance * args.num_labels)
-            else:
-                error_norm = error_all_points
+            )
+            error_norm = error_all_points / \
+                (interocular_distance * args.num_labels)
+
             print("error_norm: ", error_norm)
             landmark_error += error_norm
             if error_norm >= 0.02:
                 landmark_01_num += 1
 
+    print("all_num: ", all_num)
+    print("num_test_file: ", num_test_file)
     loss = loss_sum / (num_test_file * 1.0)
     print('Test epochs: {}\tLoss {:2.3f}'.format(epoch_size, loss))
     NRMSE = _NRMSE / (num_test_file * 1.0)
