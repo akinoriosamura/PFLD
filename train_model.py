@@ -108,6 +108,8 @@ def main(args):
         print("============ get tfrecord train data ===============")
         train_loader.create_tfrecord()
         num_train_file = train_loader.num_file
+        train_loader.calMeanShape()
+        list_ops['mean_shape'] = train_loader.meanShape
         print("============ get tfrecord test data ===============")
         test_loader.create_tfrecord()
         num_test_file = test_loader.num_file
@@ -181,6 +183,7 @@ def main(args):
         #                                                                                phase_train_placeholder, args)
         landmarks_pre, landmarks_loss, euler_angles_pre = create_model(image_batch, landmark_batch,
                                                                        phase_train_placeholder, args)
+        # landmarks_pre = tf.add(_landmarks_pre, list_ops['mean_shape'])
         attributes_w_n = tf.to_float(attribute_batch[:, 1:6])
         # _num = attributes_w_n.shape[0]
         mat_ratio = tf.reduce_mean(attributes_w_n, axis=0)
@@ -426,9 +429,11 @@ def test(sess, list_ops, args):
             list_ops['phase_train_placeholder']: False
         }
         pre_landmarks = sess.run(list_ops['landmarks'], feed_dict=feed_dict)
+        # pre_landmarks += list_ops['mean_shape']
 
         diff = pre_landmarks - landmarks
         loss = np.sum(diff * diff)
+        # loss = np.mean(np.sum(diff * diff, 1))
         loss_sum += loss
 
         for k in range(pre_landmarks.shape[0]):

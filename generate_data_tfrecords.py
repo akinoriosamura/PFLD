@@ -46,7 +46,6 @@ class TfrecordsLoader():
         self.euler_angles_shape = euler_angle.shape
         self.images = None
         self.records_list = []
-        self.meanShape = None
 
     def set_data(self, _lines):
         filenames, landmarks, attributes, euler_angles = [], [], [], []
@@ -70,6 +69,12 @@ class TfrecordsLoader():
         if self.model_type == 'pfld':
             print(" get normalized landmark in pfld")
             self.landmarks = np.asarray(landmarks, dtype=np.float32)
+            # lands = self.landmarks.copy()
+            # for land in lands:
+            #     if self.sumShape is None:
+            #         self.sumShape = land
+            #     else:
+            #         self.sumShape += land
         elif self.model_type == 'xin':
             print(" get scale landmark in xin")
             self.landmarks = np.asarray(
@@ -210,6 +215,7 @@ class TfrecordsLoader():
 
     def calMeanShape(self):
         mf_path = os.path.join(self.tfrecords_dir, "mean_face_shape.txt")
+        print("mean shape pathL: ", mf_path)
         if os.path.exists(mf_path):
             with open(mf_path, mode='r') as mf:
                 _meanShape = mf.readline()
@@ -227,8 +233,8 @@ class TfrecordsLoader():
             lands = np.asarray(lands, np.int32)
             img_tmp = self.images[10].copy()
             # print("normalizetion: -127.5 / 127.5 in xin")
-            img_tmp = (img_tmp * 127.5) + 127.5
-            # img_tmp = (img_tmp * 256)
+            # img_tmp = (img_tmp * 127.5) + 127.5
+            img_tmp = (img_tmp * 256)
             for land_id, (x, y) in enumerate(lands):
                 cv2.circle(img_tmp, (x, y), 1, (0, 255, 0))
                 # cv2.putText(img_tmp, str(land_id), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.1, (255, 255, 255), thickness=1)
