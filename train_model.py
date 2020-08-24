@@ -31,6 +31,60 @@ import shutil
 log_dir = './tensorboard'
 
 
+def wing_loss(landmarks, labels, w=10.0, epsilon=2.0):
+    """
+    Arguments:
+        landmarks, labels: float tensors with shape [batch_size, num_landmarks, 2].
+        w, epsilon: a float numbers.
+    Returns:
+        a float tensor with shape [].
+    """
+    import pdb;pdb.set_trace()
+    x = landmarks - labels
+    c = w * (1.0 - math.log(1.0 + w/epsilon))
+    absolute_x = tf.abs(x)
+    losses = tf.where(
+        tf.greater(w, absolute_x),
+        w * tf.log(1.0 + absolute_x/epsilon),
+        absolute_x - c
+    )
+
+    loss = tf.reduce_mean(tf.reduce_sum(losses, axis=[1, 2]), axis=0)
+    return loss
+
+def create_w_map(_in):
+    # 各画像内において平均誤差より各点誤差が大きい点には重みh、小さい点には重み1で、重みmap作成
+    import pdb;pdb.set_trace()
+    sq_diff = _in[0]
+    ave_loss = _in[1]
+    hw = _in[2]
+    ones = tf.ones([68])
+    hws = tf.multiply(ones, hw)
+    greater_loss_map = tf.greater(sq_diff, ave_loss)
+    weight_map = tf.where(greater_loss_map, hws, ones)
+    weight_loss = tf.multiply(weight_map, sq_diff)
+
+    return weight_loss
+
+def weighted_loss(landmarks, labels):
+    # 各画像の各点二乗誤差
+    import pdb;pdb.set_trace()
+    each_sq_diff = tf.square(landmarks - labels)
+    # 各画像の平均二乗誤差
+    ave_losses = tf.reduce_mean(each_sq_diff, axis=1)
+    # 各画像内において平均誤差より各点誤差が大きい点には重みh、小さい点には重み1で、重みmap作成
+    # 重みmapを各点誤差に掛け合わせて二乗誤差のsumを求める
+    hw = tf.constant(5)
+    weight_losses = tf.vectorized_map(create_w_map, (each_sq_diff, ave_losses, hw))
+    weight_losses = tf.multiply(weight_maps, )
+    # loss_sum = tf.reduce_sum(tf.square(landmark_batch - landmarks_pre), axis=1)
+    weight_loss = tf.reduce_sum(weight_losses, axis=1)
+    # 各画像の平均をとる
+    loss = tf.reduce_mean(weight_loss)
+
+    return loss
+
+
 def main(args):
     debug = (args.debug == 'True')
     print("args: ", args)
@@ -136,13 +190,23 @@ def main(args):
         attributes_w_n = tf.reduce_sum(attributes_w_n, axis=1)
         list_ops['attributes_w_n_batch'] = attributes_w_n
 
-        L2_loss = tf.add_n(tf.losses.get_regularization_losses())
-        _sum_k = tf.reduce_sum(tf.map_fn(
-            lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
-        loss_sum = tf.reduce_sum(
-            tf.square(landmark_batch - landmarks_pre), axis=1)
-        loss_sum = tf.reduce_mean(loss_sum)  # * _sum_k)#  * attributes_w_n)
-        loss_sum += L2_loss
+        # L2_loss = tf.add_n(tf.losses.get_regularization_losses())
+        # _sum_k = tf.reduce_sum(tf.map_fn(
+        #     lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
+        # loss_sum = tf.reduce_sum(
+        #     tf.square(landmark_batch - landmarks_pre), axis=1)
+        # loss_sum = tf.reduce_mean(loss_sum)  # * _sum_k)#  * attributes_w_n)
+        # loss_sum += L2_loss
+
+        # wing loss ver
+        _landmarks_pre = tf.reshape(landmarks_pre, [-1, 68, 2])
+        _landmark_batch = tf.reshape(landmark_batch, [-1, 68, 2])
+        loss = wing_loss(_landmarks_pre, _landmark_batch)
+        tf.losses.add_loss(loss)
+        # add L2 regularization
+        add_weight_decay(params['weight_decay'])
+        import pdb;pdb.set_trace()
+        total_loss = tf.losses.get_total_loss(add_regularization_losses=True)
 
         # quantize
         if args.num_quant < 64:
