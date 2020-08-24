@@ -67,7 +67,7 @@ def denseBlock(input, denseblockparams, isfirstlayer=False):
 def tfjs_inference(input, dense_params, batch_norm_params, weight_decay, num_labels):
     with slim.arg_scope(
         [slim.conv2d, slim.separable_convolution2d, slim.convolution2d],
-        # activation_fn=tf.nn.relu6,
+        activation_fn=tf.nn.relu6,
         weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
         biases_initializer=tf.zeros_initializer(),
         weights_regularizer=slim.l2_regularizer(weight_decay),

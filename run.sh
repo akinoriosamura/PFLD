@@ -1,18 +1,18 @@
 #!/bin/bash
 phase=$1
 num_labels=68 # 20, 52
-depth_multi=1 # default = 1, like model complicated
+depth_multi=0.75 # default = 1, like model complicated
 num_quant=64
-save_model=models2/save_models/68/sample_xin
-file_list=data/non_rotated_train_WFLW_68_data/list.txt
-# test_list=./data/rotated_test_COFW/list.txt
-# file_list=data/test_moru_dataset/list.txt
-test_list=data/test_moru_dataset/list.txt
-pre_model=models2/save_models/68/sample_xin
-out_dir=sam_sample_xin_
+save_model=models2/save_models/68/sample_300W
+# file_list=data/non_rotated_train_WFLW_68_data/list.txt
+file_list=data/rotated_train_300W/list.txt
+test_list=data/rotated_test_300W/list.txt
+# test_list=data/test_moru_dataset/list.txt
+pre_model=models2/save_models/68/sample_300W
+out_dir=sam_sample_300W
 lr=0.0001
 is_augment=False  # True or False
-image_size=112
+image_size=84
 batch_size=64
 
 # --pretrained_model=${pre_model} \

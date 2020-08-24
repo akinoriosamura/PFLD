@@ -231,7 +231,7 @@ def main(args):
                     saver.export_meta_graph(metagraph_path)
                 print("save checkpoint: {}".format(checkpoint_path))
 
-                if epoch % 9 == 0 and epoch != 0:
+                if epoch % 19 == 0 and epoch != 0:
                     print("test start")
                     start = time.time()
                     test_ME, test_FR, test_loss = test(sess, list_ops, args)
