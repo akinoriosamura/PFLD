@@ -67,7 +67,7 @@ def denseBlock(input, denseblockparams, isfirstlayer=False):
 def tfjs_inference(input, dense_params, batch_norm_params, weight_decay, num_labels):
     with slim.arg_scope(
         [slim.conv2d, slim.separable_convolution2d, slim.convolution2d],
-        activation_fn=tf.nn.relu6,
+        # activation_fn=tf.nn.relu6,
         weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
         biases_initializer=tf.zeros_initializer(),
         weights_regularizer=slim.l2_regularizer(weight_decay),
@@ -87,11 +87,11 @@ def tfjs_inference(input, dense_params, batch_norm_params, weight_decay, num_lab
         pooled = slim.avg_pool2d(dense3, 7, 2, 'VALID')
         #pooled = slim.avg_pool2d(dense6, 2, 2, 'VALID')
         print(pooled.name, pooled.get_shape())
-        flattened = slim.flatten(pooled)
-        landmarks = slim.fully_connected(
-            flattened, num_outputs=num_labels*2, activation_fn=None, scope='fc')
-        print("last layer name")
-        print(landmarks.name, landmarks.get_shape())
+    flattened = slim.flatten(pooled)
+    landmarks = slim.fully_connected(
+        flattened, num_outputs=num_labels*2, activation_fn=None, scope='fc')
+    print("last layer name")
+    print(landmarks.name, landmarks.get_shape())
 
     return landmarks
 
@@ -121,6 +121,6 @@ def create_model(input, landmark, phase_train, args):
     landmarks_loss = tf.reduce_sum(tf.square(landmarks_pre - landmark), axis=1)
     landmarks_loss = tf.reduce_mean(landmarks_loss)
 
-    print("==========finish define graph===========")
+    print("==========finish define graph only tfjs ===========")
 
     return landmarks_pre, landmarks_loss

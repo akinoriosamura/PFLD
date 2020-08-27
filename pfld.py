@@ -78,7 +78,7 @@ def pfld_backbone(input, weight_decay, batch_norm_params, num_labels, depth_mult
         # normalizer_fn=slim.batch_norm,
         with slim.arg_scope(
             [slim.conv2d, slim.separable_conv2d],
-            activation_fn=tf.nn.relu6,
+            # activation_fn=tf.nn.relu6,
             weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
             biases_initializer=tf.zeros_initializer(),
             weights_regularizer=slim.l2_regularizer(weight_decay),
@@ -152,17 +152,17 @@ def pfld_backbone(input, weight_decay, batch_norm_params, num_labels, depth_mult
             s3 = slim.flatten(conv8)
             multi_scale = tf.concat([s1, s2, s3], 1)
             print(multi_scale.name, multi_scale.get_shape())
-            landmarks = slim.fully_connected(
-                multi_scale, num_outputs=num_labels*2, activation_fn=None, scope='fc')
-            print("last layer name")
-            print(landmarks.name, landmarks.get_shape())
-            return features, landmarks
+        landmarks = slim.fully_connected(
+            multi_scale, num_outputs=num_labels*2, activation_fn=None, scope='fc')
+        print("last layer name")
+        print(landmarks.name, landmarks.get_shape())
+        return features, landmarks
 
 
 def pfld_auxiliary(features, weight_decay, batch_norm_params):
     # add the auxiliary net
     # : finish the loss function
-    print('\nauxiliary net')
+    print('\n=== auxiliary net === ')
     with slim.arg_scope([slim.convolution2d, slim.fully_connected],
                         activation_fn=tf.nn.relu,
                         weights_initializer=tf.truncated_normal_initializer(
@@ -198,7 +198,7 @@ def pfld_auxiliary(features, weight_decay, batch_norm_params):
         print(euler_angles_pre.name, euler_angles_pre.get_shape())
         # pfld_fc2/BatchNorm/Reshape_1:0
 
-        return euler_angles_pre
+    return euler_angles_pre
 
 
 def create_model(input, landmark, phase_train, args):

@@ -68,7 +68,7 @@ def tfjs_inference(input, dense_params, batch_norm_params, weight_decay, num_lab
     features = {}
     with slim.arg_scope(
         [slim.conv2d, slim.separable_convolution2d, slim.convolution2d],
-        # activation_fn=tf.nn.relu6,
+        activation_fn=tf.nn.relu6,
         weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
         biases_initializer=tf.zeros_initializer(),
         weights_regularizer=slim.l2_regularizer(weight_decay),
@@ -90,10 +90,10 @@ def tfjs_inference(input, dense_params, batch_norm_params, weight_decay, num_lab
         #pooled = slim.avg_pool2d(dense6, 2, 2, 'VALID')
         print(pooled.name, pooled.get_shape())
         flattened = slim.flatten(pooled)
-        landmarks = slim.fully_connected(
-            flattened, num_outputs=num_labels*2, activation_fn=None, scope='fc')
-        print("last layer name")
-        print(landmarks.name, landmarks.get_shape())
+    landmarks = slim.fully_connected(
+        flattened, num_outputs=num_labels*2, activation_fn=None, scope='fc')
+    print("last layer name")
+    print(landmarks.name, landmarks.get_shape())
 
     return features, landmarks
 
@@ -132,12 +132,12 @@ def pfld_auxiliary(features, weight_decay, batch_norm_params):
         fc1 = slim.fully_connected(
             net_aux, num_outputs=32, activation_fn=None, scope='pfld_fc1')
         print(fc1.name, fc1.get_shape())
-        euler_angles_pre = slim.fully_connected(
-            fc1, num_outputs=3, activation_fn=None, scope='pfld_fc2')
-        print(euler_angles_pre.name, euler_angles_pre.get_shape())
-        # pfld_fc2/BatchNorm/Reshape_1:0
+    euler_angles_pre = slim.fully_connected(
+        fc1, num_outputs=3, activation_fn=None, scope='pfld_fc2')
+    print(euler_angles_pre.name, euler_angles_pre.get_shape())
+    # pfld_fc2/BatchNorm/Reshape_1:0
 
-        return euler_angles_pre
+    return euler_angles_pre
 
 
 def create_model(input, landmark, phase_train, args):

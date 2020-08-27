@@ -3,7 +3,8 @@ from __future__ import division
 from __future__ import print_function
 
 # from pfld import create_model
-from tfjs import create_model
+# from tfjs import create_model
+from tfjs_aux import create_model
 from generate_data import DataLoader
 
 

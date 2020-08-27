@@ -3,13 +3,13 @@ phase=$1
 num_labels=68 # 20, 52
 depth_multi=0.75 # default = 1, like model complicated
 num_quant=64
-save_model=models2/save_models/68/sample_300W
+save_model=models2/save_models/68/sample_pfld_300W_all_3
 # file_list=data/non_rotated_train_WFLW_68_data/list.txt
 file_list=data/rotated_train_300W/list.txt
 test_list=data/rotated_test_300W/list.txt
 # test_list=data/test_moru_dataset/list.txt
-pre_model=models2/save_models/68/sample_300W
-out_dir=sam_sample_300W
+pre_model=models2/save_models/68/sample_pfld_300W_all_3
+out_dir=sam_sample_pfld_300W_all_3
 lr=0.0001
 is_augment=False  # True or False
 image_size=84
