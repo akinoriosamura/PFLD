@@ -112,16 +112,19 @@ def main(args):
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
         return heats, loss_value, L2_loss, debug_list
 
-    epoch_start = 0
-
     # ============ resotre pretrain =============
     print("================= resotre pretrain if exist =================")
     if args.pretrained_model:
         pretrained_model = args.pretrained_model
-        root = tf.train.Checkpoint(optimizer=optimizer, model=model)
-        root.restore(tf.train.latest_checkpoint(pretrained_model))
-        print('Restore from model directory: {}'.format(pretrained_model))
-        # import pdb;pdb.set_trace()
+        ckpt = tf.train.Checkpoint(optimizer=optimizer, model=model)
+        manager = tf.train.CheckpointManager(ckpt, pretrained_model, max_to_keep=3)
+        latest_ckpt_path = manager.latest_checkpoint
+        ckpt.restore(latest_ckpt_path)
+        # import pdb; pdb.set_trace()
+        print('Restore from model : {}'.format(os.path.join(pretrained_model, latest_ckpt_path)))
+        epoch_start = int(latest_ckpt_path[latest_ckpt_path.find('ckpt-') + 5:]) + 1
+    else:
+        epoch_start = 0
 
     # model.compile(
     #     optimizer=optimizer,
@@ -171,10 +174,8 @@ def main(args):
                 all_step += 1
                 optimizer.learning_rate = learning_rate_fn(all_step)
 
-        checkpoint_path = os.path.join(model_dir, 'model.ckpt')
-        root = tf.train.Checkpoint(optimizer=optimizer, model=model)
-        root.save(checkpoint_path)
-        print("save checkpoint: {}".format(checkpoint_path))
+        save_checkpoint_path = manager.save(checkpoint_number=epoch)
+        print("save checkpoint: {}".format(save_checkpoint_path))
         savedmodel_path = os.path.join(model_dir, 'SavedModel/')
         tf.saved_model.save(model, savedmodel_path)
         print("save SavedModel: {}".format(savedmodel_path))

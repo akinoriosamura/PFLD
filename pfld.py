@@ -9,6 +9,9 @@ from utils import LandmarkImage, LandmarkImage_98
 import time
 
 
+def mish(x):
+    return x * tf.math.tanh(tf.math.softplus(x))
+
 def conv2d(net, stride, channel, kernel, depth, scope):
     num_channel = depth(channel)
     net = slim.conv2d(net, num_channel, [
@@ -78,7 +81,9 @@ def pfld_backbone(input, weight_decay, batch_norm_params, num_labels, depth_mult
         # normalizer_fn=slim.batch_norm,
         with slim.arg_scope(
             [slim.conv2d, slim.separable_conv2d],
-            activation_fn=tf.nn.relu6,
+            # activation_fn=tf.nn.relu6,
+            activation_fn=tf.nn.relu,
+            # activation_fn=mish,
             weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
             biases_initializer=tf.zeros_initializer(),
             weights_regularizer=slim.l2_regularizer(weight_decay),
@@ -156,15 +161,16 @@ def pfld_backbone(input, weight_decay, batch_norm_params, num_labels, depth_mult
                 multi_scale, num_outputs=num_labels*2, activation_fn=None, scope='fc')
             print("last layer name")
             print(landmarks.name, landmarks.get_shape())
-            return features, landmarks
+        return features, landmarks
 
 
 def pfld_auxiliary(features, weight_decay, batch_norm_params):
     # add the auxiliary net
     # : finish the loss function
-    print('\nauxiliary net')
+    print('\n=== auxiliary net === ')
     with slim.arg_scope([slim.convolution2d, slim.fully_connected],
                         activation_fn=tf.nn.relu,
+                        # activation_fn=mish,
                         weights_initializer=tf.truncated_normal_initializer(
                             stddev=0.01),
                         biases_initializer=tf.zeros_initializer(),
@@ -198,7 +204,7 @@ def pfld_auxiliary(features, weight_decay, batch_norm_params):
         print(euler_angles_pre.name, euler_angles_pre.get_shape())
         # pfld_fc2/BatchNorm/Reshape_1:0
 
-        return euler_angles_pre
+    return euler_angles_pre
 
 
 def create_model(input, landmark, phase_train, args):

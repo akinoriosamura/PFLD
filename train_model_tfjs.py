@@ -606,7 +606,7 @@ def parse_arguments(argv):
     parser.add_argument('--pretrained_model', type=str, default=None)
     parser.add_argument('--model_dir', type=str, default='models1/model_test')
     parser.add_argument('--learning_rate', type=float, default=0.001)
-    parser.add_argument('--lr_epoch', type=str, default='20,40,60,80,100,500')
+    parser.add_argument('--lr_epoch', type=str, default='25,40,60,80,100,500')
     parser.add_argument('--weight_decay', type=float, default=5e-5)
     parser.add_argument('--level', type=str, default='L5')
     parser.add_argument('--save_image_example', action='store_false')

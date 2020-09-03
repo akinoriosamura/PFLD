@@ -99,11 +99,11 @@ def tfjs_inference(input, dense_params, batch_norm_params, weight_decay, num_lab
         # pooled = slim.avg_pool2d(dense3, 7, 2, 'VALID')
         pooled = slim.avg_pool2d(dense4, 4, 4, 'VALID')
         print(pooled.name, pooled.get_shape())
-        flattened = slim.flatten(pooled)
-        landmarks = slim.fully_connected(
-            flattened, num_outputs=num_labels*2, activation_fn=None, scope='fc')
-        print("last layer name")
-        print(landmarks.name, landmarks.get_shape())
+    flattened = slim.flatten(pooled)
+    landmarks = slim.fully_connected(
+        flattened, num_outputs=num_labels*2, activation_fn=None, scope='fc')
+    print("last layer name")
+    print(landmarks.name, landmarks.get_shape())
 
     return landmarks
 

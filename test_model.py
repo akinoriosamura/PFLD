@@ -22,6 +22,16 @@ import os
 
 DEBUG = False
 
+def get_mean_shape(args):
+    file_base = os.path.basename(os.path.dirname(args.file_list))
+    tfrecords_path = os.path.join(args.tfrecords_dir, file_base)
+    mean_shape_txt = os.path.join(tfrecords_path, "mean_face_shape.txt")
+    with open(mean_shape_txt, mode='r') as mf:
+        mean_shape = mf.readline()
+        mean_shape = mean_shape.split(" ")
+        mean_shape = np.array([float(mf) for mf in mean_shape])
+
+    return mean_shape
 
 def main(args):
     print("args: ", args)
@@ -30,6 +40,9 @@ def main(args):
     else:
         shutil.rmtree(args.out_dir)
         os.mkdir(args.out_dir)
+
+    # get mean shape
+    # mean_shape = get_mean_shape(args)
 
     loss_sum = 0
     NRMSE = 0
@@ -113,6 +126,8 @@ def main(args):
                 # print(pre_landmarks)
                 print("elaps: ", time.time() - st)
                 pre_landmark = pre_landmarks[0]
+                # merge mean shape
+                # pre_landmark += mean_shape
                 # save labeled image
                 h, w, _ = image.shape
                 if DEBUG:
@@ -178,15 +193,14 @@ def main(args):
                 # print("eye: ", left_eye_edge)
                 # print("eye; ", right_eye_edge)
                 # print("labels: ", args.num_labels)
-                time.sleep(2)
-                """
+                # time.sleep(2)
                 interocular_distance = np.sqrt(
                     np.sum(
                         pow((landmark[left_eye_edge*2:left_eye_edge*2+2] - landmark[right_eye_edge*2:right_eye_edge*2+2]), 2)
                         )
-                    error_norm = error_all_points / (interocular_distance * args.num_labels)
-                    """
-                error_norm = error_all_points
+                )
+                error_norm = error_all_points / (interocular_distance * args.num_labels)
+                # error_norm = error_all_points
                 print("error_norm: ", error_norm)
                 landmark_error += error_norm
                 if error_norm >= 0.02:
@@ -194,8 +208,8 @@ def main(args):
 
             loss = loss_sum / (len(file_list) * 1.0)
             print('Test Loss {:2.3f}'.format(loss))
-            NRMSE = NRMSE / (len(file_list) * 1.0)
-            print('Test NRMSE {:2.3f}'.format(NRMSE))
+            #NRMSE = NRMSE / (len(file_list) * 1.0)
+            #print('Test NRMSE {:2.3f}'.format(NRMSE))
 
             print('mean error and failure rate')
             landmark_error_norm = landmark_error / (len(file_list) * 1.0)
@@ -220,6 +234,8 @@ def parse_arguments(argv):
 
     parser.add_argument('--seed', type=int, default=666)
     parser.add_argument('--max_epoch', type=int, default=1000)
+    parser.add_argument('--file_list', type=str,
+                        default='data/train_data/list.txt')
     parser.add_argument('--test_list', type=str,
                         default='data/test_data/list.txt')
     parser.add_argument('--image_size', type=int, default=112)
@@ -234,6 +250,7 @@ def parse_arguments(argv):
     parser.add_argument('--save_image_example', action='store_false')
     parser.add_argument('--depth_multi', type=float, default=1)
     parser.add_argument('--out_dir', type=str, default='sample_result')
+    parser.add_argument('--tfrecords_dir', type=str, default='/data/tfrecords')
     parser.add_argument('--num_quant', type=int, default=64)
     parser.add_argument('--is_augment', type=str2bool,
                         default=False, help='Whether to augment')
