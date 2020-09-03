@@ -3,10 +3,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 import tensorflow as tf
+# import tensorflow_addons as tfa
 import tensorflow.contrib.slim as slim
 from utils import LandmarkImage, LandmarkImage_98
 
 import time
+
+
+def mish(x):
+    return x * tf.math.tanh(tf.math.softplus(x))
 
 
 def conv2d(net, stride, num_channel, kernel, scope):
@@ -68,6 +73,9 @@ def tfjs_inference(input, dense_params, batch_norm_params, weight_decay, num_lab
     with slim.arg_scope(
         [slim.conv2d, slim.separable_convolution2d, slim.convolution2d],
         activation_fn=tf.nn.relu6,
+        # activation_fn=tf.nn.relu,
+        # activation_fn=tfa.activations.mish,
+        # activation_fn=mish,
         weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
         biases_initializer=tf.zeros_initializer(),
         weights_regularizer=slim.l2_regularizer(weight_decay),
@@ -84,8 +92,12 @@ def tfjs_inference(input, dense_params, batch_norm_params, weight_decay, num_lab
         print(dense2.name, dense2.get_shape())
         dense3 = denseBlock(dense2, dense_params["dense3"])
         print(dense3.name, dense3.get_shape())
-        pooled = slim.avg_pool2d(dense3, 7, 2, 'VALID')
-        #pooled = slim.avg_pool2d(dense6, 2, 2, 'VALID')
+        dense4 = denseBlock(dense3, dense_params["dense4"])
+        print(dense4.name, dense4.get_shape())
+        # dense5 = denseBlock(dense4, dense_params["dense5"])
+        # print(dense5.name, dense5.get_shape())
+        # pooled = slim.avg_pool2d(dense3, 7, 2, 'VALID')
+        pooled = slim.avg_pool2d(dense4, 4, 4, 'VALID')
         print(pooled.name, pooled.get_shape())
         flattened = slim.flatten(pooled)
         landmarks = slim.fully_connected(
@@ -104,12 +116,21 @@ def create_model(input, landmark, phase_train, args):
         'variables_collections': [tf.GraphKeys.TRAINABLE_VARIABLES],
         'is_training': phase_train
     }
+
+    # dense_params = {
+    #     # inc, outc, isfirst, name
+    #     "dense0": {"in": 3, "out": 32, "name": 'dense0'},
+    #     "dense1": {"in": 32, "out": 64, "name": 'dense1'},
+    #     "dense2": {"in": 64, "out": 128, "name": 'dense2'},
+    #     "dense3": {"in": 128, "out": 256, "name": 'dense3'},
+    # }
     dense_params = {
         # inc, outc, isfirst, name
         "dense0": {"in": 3, "out": 32, "name": 'dense0'},
         "dense1": {"in": 32, "out": 64, "name": 'dense1'},
         "dense2": {"in": 64, "out": 128, "name": 'dense2'},
         "dense3": {"in": 128, "out": 256, "name": 'dense3'},
+        "dense4": {"in": 256, "out": 512, "name": 'dense4'},
     }
 
     landmark_dim = int(landmark.get_shape()[-1])
@@ -121,6 +142,6 @@ def create_model(input, landmark, phase_train, args):
     landmarks_loss = tf.reduce_sum(tf.square(landmarks_pre - landmark), axis=1)
     landmarks_loss = tf.reduce_mean(landmarks_loss)
 
-    print("==========finish define graph===========")
+    print("==========finish define graph only tfjs ===========")
 
     return landmarks_pre, landmarks_loss

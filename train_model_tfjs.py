@@ -4,14 +4,17 @@ from __future__ import division
 from __future__ import print_function
 from utils import train_model
 # from pfld import create_model
-# from tfjs import create_model
-from tfjs_aux import create_model
-from generate_data import DataLoader
+from tfjs import create_model
+# from tfjs_aux import create_model
+# from generate_data import DataLoader
+from generate_data_tfrecords import TfrecordsLoader
 from data_augmentor import DataAugmentator
+import gc
 import time
 import math
 # import matplotlib.pyplot as plt
 import os
+import random
 # os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 # print('pid: {}     GPU: {}'.format(os.getpid(), os.environ['CUDA_VISIBLE_DEVICES']))
 
@@ -29,6 +32,96 @@ import shutil
 log_dir = './tensorboard'
 
 
+def create_wing_w_map(diff):
+    # 各画像内において平均誤差より各点誤差が大きい点には重みh、小さい点には重み1で、重みmap作成
+    # import pdb;pdb.set_trace()
+    ave_diff = tf.reduce_mean(diff)
+    hw = tf.constant(3.0)
+    ones = tf.ones([68, 2])
+    hws = tf.multiply(ones, hw)
+    greater_diff_map = tf.greater(diff, ave_diff)
+    weight_map = tf.where(greater_diff_map, hws, ones)
+
+    return weight_map
+
+def weight_wing_loss(landmarks, labels, w=10.0, epsilon=2.0):
+    """
+    Arguments:
+        landmarks, labels: float tensors with shape [batch_size, num_landmarks, 2].
+        w, epsilon: a float numbers.
+    Returns:
+        a float tensor with shape [].
+    """
+    x = landmarks - labels
+    c = w * (1.0 - math.log(1.0 + w/epsilon))
+    absolute_x = tf.abs(x)
+    #import pdb;pdb.set_trace()
+    weight_map = tf.vectorized_map(create_wing_w_map, absolute_x)
+    # pre weighted
+    print("=== pre weoght wing loss === ")
+    weight_x = tf.multiply(weight_map, absolute_x)
+    weight_losses = tf.where(
+        tf.greater(w, weight_x),
+        w * tf.log(1.0 + weight_x/epsilon),
+        weight_x - c
+    )
+    # post weighted
+    # print("=== post weight wing loss === ")
+    # losses = tf.where(
+    #     tf.greater(w, absolute_x),
+    #     w * tf.log(1.0 + absolute_x/epsilon),
+    #     absolute_x - c
+    # )
+    # weight_losses = tf.multiply(weight_map, losses)
+
+    return weight_losses, [absolute_x, weight_map, weight_losses]
+
+def wing_loss(landmarks, labels, w=10.0, epsilon=2.0):
+    """
+    Arguments:
+        landmarks, labels: float tensors with shape [batch_size, num_landmarks, 2].
+        w, epsilon: a float numbers.
+    Returns:
+        a float tensor with shape [].
+    """
+    print("=== wing loss === ")
+    x = landmarks - labels
+    c = w * (1.0 - math.log(1.0 + w/epsilon))
+    absolute_x = tf.abs(x)
+    #import pdb;pdb.set_trace()
+    losses = tf.where(
+        tf.greater(w, absolute_x),
+        w * tf.log(1.0 + absolute_x/epsilon),
+        absolute_x - c
+    )
+
+    return losses, [absolute_x, losses]
+
+def create_w_map(_in):
+    # 各画像内において平均誤差より各点誤差が大きい点には重みh、小さい点には重み1で、重みmap作成
+    sq_diff = _in[0]
+    ave_loss = _in[1]
+    hw = tf.constant(3.0)
+    ones = tf.ones([68])
+    hws = tf.multiply(ones, hw)
+    greater_loss_map = tf.greater(sq_diff, ave_loss)
+    weight_map = tf.where(greater_loss_map, hws, ones)
+    weight_loss = tf.multiply(weight_map, sq_diff)
+
+    return weight_loss
+
+def weighted_loss(landmarks, labels):
+    # 各画像の各点二乗誤差
+    _each_sq_diff = tf.square(landmarks - labels)
+    each_sq_diff = tf.reduce_sum(_each_sq_diff, axis=2)
+    # 各画像の平均二乗誤差
+    ave_losses = tf.reduce_mean(each_sq_diff, axis=1)
+    # 各画像内において平均誤差より各点誤差が大きい点には重みh、小さい点には重み1で、重みmap作成
+    # 重みmapを各点誤差に掛け合わせて二乗誤差のsumを求める
+    weight_losses = tf.vectorized_map(create_w_map, (each_sq_diff, ave_losses))
+
+    return weight_losses, [_each_sq_diff, each_sq_diff, ave_losses, weight_losses]
+
 def main(args):
     debug = (args.debug == 'True')
     print("args: ", args)
@@ -43,22 +136,43 @@ def main(args):
         os.makedirs(model_dir, exist_ok=True)
 
         # ============== get dataset ==============
+        # use tfrecord
         print("============== get dataloader ==============")
-        train_loader = DataLoader(args.file_list, args, "train", debug)
-        test_loader = DataLoader(args.test_list, args, "test", debug)
+        train_loader = TfrecordsLoader(
+            args.file_list, args, "train", "xin", debug)
+        test_loader = TfrecordsLoader(
+            args.test_list, args, "test", "xin", debug)
+        print("============ get tfrecord train data ===============")
+        train_loader.create_tfrecord()
+        num_train_file = train_loader.num_file
+        # train_loader.calMeanShape()
+        # list_ops['mean_shape'] = train_loader.meanShape
+        print("============ get tfrecord test data ===============")
+        test_loader.create_tfrecord()
+        num_test_file = test_loader.num_file
 
-        print("============ get train data ===============")
-        train_dataset, num_train_file = train_loader.get_dataset()
-        print("============ get test data ===============")
-        test_dataset, num_test_file = test_loader.get_dataset()
-
-        batch_train_dataset = train_dataset.batch(args.batch_size).repeat()
-        train_iterator = batch_train_dataset.make_one_shot_iterator()
-        train_next_element = train_iterator.get_next()
-
+        # run below in epoch for large dataset
+        test_dataset = test_loader.get_tfrecords(test_loader.records_list[0])
         batch_test_dataset = test_dataset.batch(args.batch_size).repeat()
         test_iterator = batch_test_dataset.make_one_shot_iterator()
         test_next_element = test_iterator.get_next()
+
+        # no use tfrecord
+        # print("============== get dataloader ==============")
+        # train_loader = DataLoader(args.file_list, args, "train", debug)
+        # test_loader = DataLoader(args.test_list, args, "test", debug)
+        # print("============ get train data ===============")
+        # train_dataset, num_train_file = train_loader.get_dataset()
+        # print("============ get test data ===============")
+        # test_dataset, num_test_file = test_loader.get_dataset()
+#
+        # batch_train_dataset = train_dataset.batch(args.batch_size).repeat()
+        # train_iterator = batch_train_dataset.make_one_shot_iterator()
+        # train_next_element = train_iterator.get_next()
+#
+        # batch_test_dataset = test_dataset.batch(args.batch_size).repeat()
+        # test_iterator = batch_test_dataset.make_one_shot_iterator()
+        # test_next_element = test_iterator.get_next()
 
         print('Total number of examples: {}'.format(num_train_file))
         print('Test number of examples: {}'.format(num_test_file))
@@ -66,9 +180,9 @@ def main(args):
         list_ops['num_train_file'] = num_train_file
         list_ops['num_test_file'] = num_test_file
 
-        list_ops['train_dataset'] = train_dataset
+        # list_ops['train_dataset'] = train_dataset
         list_ops['test_dataset'] = test_dataset
-        list_ops['train_next_element'] = train_next_element
+        # list_ops['train_next_element'] = train_next_element
         list_ops['test_next_element'] = test_next_element
 
         tf.set_random_seed(args.seed)
@@ -102,10 +216,14 @@ def main(args):
         list_ops['phase_train_placeholder'] = phase_train_placeholder
 
         print('Building training graph.')
-        # landmarks_pre, landmarks_loss = create_model(image_batch, landmark_batch,
-        #                                                                phase_train_placeholder, args)
-        landmarks_pre, landmarks_loss, euler_angles_pre = create_model(image_batch, landmark_batch,
+        landmarks_pre, landmarks_loss = create_model(image_batch, landmark_batch,
                                                                        phase_train_placeholder, args)
+        # landmarks_pre, landmarks_loss, euler_angles_pre = create_model(image_batch, landmark_batch,
+        #                                                                phase_train_placeholder, args)
+
+        # merge mean shape
+        # print("======= mean shape =======")
+        # landmarks_pre = tf.add(landmarks_pre, list_ops['mean_shape'])
 
         attributes_w_n = tf.to_float(attribute_batch[:, 1:6])
         # _num = attributes_w_n.shape[0]
@@ -116,13 +234,39 @@ def main(args):
         attributes_w_n = tf.reduce_sum(attributes_w_n, axis=1)
         list_ops['attributes_w_n_batch'] = attributes_w_n
 
+        # default loss
+        # print("=== default loss ===")
+        # losses_sum = tf.reduce_sum(
+        #     tf.square(landmark_batch - landmarks_pre), axis=1)
+        # debug_l = []
+
+        _landmarks_pre = tf.reshape(landmarks_pre, [-1, args.num_labels, 2])
+        _landmark_batch = tf.reshape(landmark_batch, [-1, args.num_labels, 2])
+        # import pdb;pdb.set_trace()
+        # wing loss
+        print("=== wing loss ===")
+        wing_losses, debug_l = wing_loss(_landmarks_pre, _landmark_batch)
+        losses_sum = tf.reduce_sum(wing_losses, axis=[1, 2])
+        # weight wing loss
+        # print("=== weight wing loss ===")
+        # wing_losses, debug_l = weight_wing_loss(_landmarks_pre, _landmark_batch)
+        # losses_sum = tf.reduce_sum(wing_losses, axis=[1, 2])
+        # weighted loss
+        # print("=== weight loss ===")
+        # weight_losses, debug_l = weighted_loss(_landmarks_pre, _landmark_batch)
+        # losses_sum = tf.reduce_sum(weight_losses, axis=1)
+        # summarize loss
+        # _sum_k = tf.reduce_sum(tf.map_fn(
+        #     lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
+        # loss = tf.reduce_mean((losses_sum * _sum_k), axis=0)
+        loss = tf.reduce_mean((losses_sum), axis=0)
+        tf.losses.add_loss(loss)
+        # add L2 regularization
         L2_loss = tf.add_n(tf.losses.get_regularization_losses())
-        _sum_k = tf.reduce_sum(tf.map_fn(
-            lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
-        loss_sum = tf.reduce_sum(
-            tf.square(landmark_batch - landmarks_pre), axis=1)
-        loss_sum = tf.reduce_mean(loss_sum * _sum_k)  # * attributes_w_n)
-        loss_sum += L2_loss
+        loss_sum = tf.losses.get_total_loss(add_regularization_losses=True)
+        # debug
+        debug_l.append(losses_sum)
+        debug_l.append(loss)
 
         # quantize
         if args.num_quant < 64:
@@ -150,6 +294,7 @@ def main(args):
         list_ops['landmarks'] = landmarks_pre
         list_ops['L2_loss'] = L2_loss
         list_ops['loss'] = loss_sum
+        list_ops['debug_l'] = debug_l
         list_ops['train_op'] = train_op
         list_ops['lr_op'] = lr_op
 
@@ -208,30 +353,61 @@ def main(args):
             train_write = tf.summary.FileWriter(log_dir, sess.graph)
 
             for epoch in range(epoch_start, args.max_epoch):
-                print("train start")
-                start = time.time()
-                train_L, train_L2 = train(
-                    sess, epoch_size, epoch, list_ops, args)
-                print("train time: {}" .format(time.time() - start))
+                # use tfrecords
+                print("get dataset start")
+                #import pdb;pdb.set_trace()
+                records_order = random.sample(
+                    train_loader.records_list, train_loader.num_records)
+                assert len(records_order) == train_loader.num_records
+                print("records order: ", records_order)
+                for record_id, target_train_tfrecord_path in enumerate(records_order):
+                    if record_id != 0:
+                        print("delete dataset memory ")
+                        del train_dataset
+                        del batch_train_dataset
+                        del train_iterator
+                        del train_next_element
+                        gc.collect()
+                    print("target_train_tfrecord_path : ",
+                          target_train_tfrecord_path)
+                    train_dataset = train_loader.get_tfrecords(
+                        target_train_tfrecord_path)
+                    batch_train_dataset = train_dataset.batch(
+                        args.batch_size).repeat()
+                    train_iterator = batch_train_dataset.make_one_shot_iterator()
+                    train_next_element = train_iterator.get_next()
 
-                summary, _, _ = sess.run(
-                    [
-                        merged,
-                        train_loss.assign(train_L),
-                        train_loss_l2.assign(train_L2)
-                    ]
-                )
-                train_write.add_summary(summary, epoch)
+                    list_ops['train_dataset'] = train_dataset
+                    list_ops['train_next_element'] = train_next_element
+                    list_ops['record_id'] = record_id
+                    list_ops['num_records'] = train_loader.num_records
+
+                    print("train start")
+                    train_num_in_record = epoch_size // train_loader.num_records
+                    print("train_num_in_record: ", train_num_in_record)
+                    start = time.time()
+                    train_L, train_L2 = train(
+                        sess, train_num_in_record, epoch, list_ops, args)
+                    print("train time: {}" .format(time.time() - start))
+
+                    summary, _, _ = sess.run(
+                        [
+                            merged,
+                            train_loss.assign(train_L),
+                            train_loss_l2.assign(train_L2)
+                        ]
+                    )
+                    train_write.add_summary(summary, epoch)
 
                 checkpoint_path = os.path.join(model_dir, 'model.ckpt')
                 metagraph_path = os.path.join(model_dir, 'model.meta')
                 saver.save(sess, checkpoint_path, global_step=epoch,
-                           write_meta_graph=False)
+                        write_meta_graph=False)
                 if not os.path.exists(metagraph_path):
                     saver.export_meta_graph(metagraph_path)
                 print("save checkpoint: {}".format(checkpoint_path))
 
-                if epoch % 19 == 0 and epoch != 0:
+                if epoch % 20 == 0 and epoch != 0:
                     print("test start")
                     start = time.time()
                     test_ME, test_FR, test_loss = test(sess, list_ops, args)
@@ -249,9 +425,7 @@ def main(args):
 
 
 def train(sess, epoch_size, epoch, list_ops, args):
-
     image_batch, landmarks_batch, attribute_batch, euler_batch = list_ops['train_next_element']
-
     for i in range(epoch_size):
         # TODO : get the w_n and euler_angles_gt_batch
         images, landmarks, attributes, eulers = sess.run(
@@ -278,25 +452,26 @@ def train(sess, epoch_size, epoch, list_ops, args):
             list_ops['euler_angles_gt_batch']: eulers,
             list_ops['attributes_w_n_batch']: attributes_w_n
         }
-        loss, _, lr, L2_loss = sess.run([list_ops['loss'], list_ops['train_op'], list_ops['lr_op'],
-                                         list_ops['L2_loss']], feed_dict=feed_dict)
-
+        loss, _, lr, L2_loss, landmarks, debug_l = sess.run([list_ops['loss'], list_ops['train_op'], list_ops['lr_op'],
+                                         list_ops['L2_loss'], list_ops['landmarks'], list_ops['debug_l']], feed_dict=feed_dict)
+        # import pdb;pdb.set_trace()
         if ((i + 1) % 10) == 0 or (i + 1) == epoch_size:
             Epoch = 'Epoch:[{:<4}][{:<4}/{:<4}]'.format(
                 epoch, i + 1, epoch_size)
-
             Loss = 'Loss {:2.3f}\tL2_loss {:2.3f}'.format(loss, L2_loss)
             print('{}\t{}\t lr {:2.3}'.format(Epoch, Loss, lr))
+            # get land sample
+            image_tmp = np.zeros([112, 112, 1])
+            landmark = landmarks[0].reshape(-1, 2) * [112, 112]
+            for (x, y) in landmark.astype(np.int32):
+                cv2.circle(image_tmp, (x, y), 1, (255, 0, 0))
+            cv2.imwrite("./sample_landmark_img.jpg", image_tmp)
 
     return loss, L2_loss
 
 
 def test(sess, list_ops, args):
     image_batch, landmarks_batch, attribute_batch, euler_batch = list_ops['test_next_element']
-
-    sample_path = os.path.join(args.model_dir, 'HeatMaps')
-    if not os.path.exists(sample_path):
-        os.mkdir(sample_path)
 
     loss_sum = 0
     landmark_error = 0
@@ -343,7 +518,7 @@ def test(sess, list_ops, args):
                 else:
                     print("eye error")
                     exit()
-                time.sleep(3)
+                # time.sleep(3)
                 interocular_distance = np.sqrt(
                     np.sum(
                         pow((landmarks[k][left_eye_edge*2:left_eye_edge*2+2] -
@@ -357,27 +532,6 @@ def test(sess, list_ops, args):
             landmark_error += error_norm
             if error_norm >= 0.02:
                 landmark_01_num += 1
-
-        # if i == 0:
-        #     image_save_path = os.path.join(sample_path, 'img')
-        #     if not os.path.exists(image_save_path):
-        #         os.mkdir(image_save_path)
-        #
-        #     for j in range(images.shape[0]): #batch_size
-        #         image = images[j]*256
-        #         image = image[:,:,::-1]
-        #
-        #         image_i = image.copy()
-        #         pre_landmark = pre_landmarks[j]
-        #         h, w, _ = image_i.shape
-        #         pre_landmark = pre_landmark.reshape(-1, 2) * [w, h]
-        #         for (x, y) in pre_landmark.astype(np.int32):
-        #             cv2.circle(image_i, (x, y), 1, (0, 0, 255))
-        #         landmark = landmarks[j].reshape(-1, 2) * [w, h]
-        #         for (x, y) in landmark.astype(np.int32):
-        #             cv2.circle(image_i, (x, y), 1, (255, 0, 0))
-        #         image_save_name = os.path.join(image_save_path, '{}.jpg'.format(j))
-        #         cv2.imwrite(image_save_name, image_i)
 
     loss = loss_sum / (list_ops['num_test_file'] * 1.0)
     print('Test epochs: {}\tLoss {:2.3f}'.format(epoch_size, loss))
@@ -444,7 +598,7 @@ def parse_arguments(argv):
     parser.add_argument('--test_list', type=str,
                         default='data/test_data/list.txt')
     parser.add_argument('--seed', type=int, default=666)
-    parser.add_argument('--max_epoch', type=int, default=1000)
+    parser.add_argument('--max_epoch', type=int, default=81)
     parser.add_argument('--image_size', type=int, default=112)
     parser.add_argument('--num_labels', type=int, default=98)
     parser.add_argument('--image_channels', type=int, default=3)

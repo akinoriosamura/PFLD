@@ -68,7 +68,7 @@ def tfjs_inference(input, dense_params, batch_norm_params, weight_decay, num_lab
     features = {}
     with slim.arg_scope(
         [slim.conv2d, slim.separable_convolution2d, slim.convolution2d],
-        # activation_fn=tf.nn.relu6,
+        activation_fn=tf.nn.relu6,
         weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
         biases_initializer=tf.zeros_initializer(),
         weights_regularizer=slim.l2_regularizer(weight_decay),
@@ -137,7 +137,7 @@ def pfld_auxiliary(features, weight_decay, batch_norm_params):
         print(euler_angles_pre.name, euler_angles_pre.get_shape())
         # pfld_fc2/BatchNorm/Reshape_1:0
 
-        return euler_angles_pre
+    return euler_angles_pre
 
 
 def create_model(input, landmark, phase_train, args):
