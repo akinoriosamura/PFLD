@@ -9,6 +9,9 @@ from utils import LandmarkImage, LandmarkImage_98
 import time
 
 
+def mish(x):
+    return x * tf.math.tanh(tf.math.softplus(x))
+
 def conv2d(net, stride, channel, kernel, depth, scope):
     num_channel = depth(channel)
     net = slim.conv2d(net, num_channel, [
@@ -79,6 +82,8 @@ def pfld_backbone(input, weight_decay, batch_norm_params, num_labels, depth_mult
         with slim.arg_scope(
             [slim.conv2d, slim.separable_conv2d],
             # activation_fn=tf.nn.relu6,
+            activation_fn=tf.nn.relu,
+            # activation_fn=mish,
             weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
             biases_initializer=tf.zeros_initializer(),
             weights_regularizer=slim.l2_regularizer(weight_decay),
@@ -152,10 +157,10 @@ def pfld_backbone(input, weight_decay, batch_norm_params, num_labels, depth_mult
             s3 = slim.flatten(conv8)
             multi_scale = tf.concat([s1, s2, s3], 1)
             print(multi_scale.name, multi_scale.get_shape())
-        landmarks = slim.fully_connected(
-            multi_scale, num_outputs=num_labels*2, activation_fn=None, scope='fc')
-        print("last layer name")
-        print(landmarks.name, landmarks.get_shape())
+            landmarks = slim.fully_connected(
+                multi_scale, num_outputs=num_labels*2, activation_fn=None, scope='fc')
+            print("last layer name")
+            print(landmarks.name, landmarks.get_shape())
         return features, landmarks
 
 
@@ -165,6 +170,7 @@ def pfld_auxiliary(features, weight_decay, batch_norm_params):
     print('\n=== auxiliary net === ')
     with slim.arg_scope([slim.convolution2d, slim.fully_connected],
                         activation_fn=tf.nn.relu,
+                        # activation_fn=mish,
                         weights_initializer=tf.truncated_normal_initializer(
                             stddev=0.01),
                         biases_initializer=tf.zeros_initializer(),

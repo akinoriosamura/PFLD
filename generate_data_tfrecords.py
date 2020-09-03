@@ -13,7 +13,7 @@ class TfrecordsLoader():
     def __init__(self, file_list, args, phase, model_type, debug=False):
         print("labels; ", args.num_labels)
         time.sleep(3)
-        self.num_records = 2
+        self.num_records = 20
         self.file_list = file_list
         with open(self.file_list, 'r') as f:
             self.lines = f.readlines()
@@ -69,16 +69,15 @@ class TfrecordsLoader():
         if self.model_type == 'pfld':
             print(" get normalized landmark in pfld")
             self.landmarks = np.asarray(landmarks, dtype=np.float32)
-            # lands = self.landmarks.copy()
-            # for land in lands:
-            #     if self.sumShape is None:
-            #         self.sumShape = land
-            #     else:
-            #         self.sumShape += land
+            lands = self.landmarks.copy()
+            for land in lands:
+                if self.sumShape is None:
+                    self.sumShape = land
+                else:
+                    self.sumShape += land
         elif self.model_type == 'xin':
             print(" get scale landmark in xin")
-            self.landmarks = np.asarray(
-                landmarks, dtype=np.float32)  # * self.args.image_size
+            self.landmarks = np.asarray(landmarks, dtype=np.float32)  # * self.args.image_size
             lands = self.landmarks.copy()
             for land in lands:
                 if self.sumShape is None:

@@ -367,7 +367,7 @@ class ImageDate():
         return labels
 
 
-def get_dataset_list(imgDir, outDir, landmarkDir, is_train, rotate, num_labels, image_size, dataset):
+def get_dataset_list(imgDir, outDir, landmarkDir, is_train, rotate, num_labels, image_size, dataset, AUGMENT_NUM):
     with open(landmarkDir, 'r') as f:
         lines = f.readlines()
         labels = []
@@ -380,7 +380,7 @@ def get_dataset_list(imgDir, outDir, landmarkDir, is_train, rotate, num_labels, 
         for i, line in enumerate(lines):
             Img = ImageDate(line, imgDir, num_labels, image_size, dataset)
             img_name = Img.path
-            Img.load_data(is_train, rotate, 10, Mirror_file)
+            Img.load_data(is_train, rotate, AUGMENT_NUM, Mirror_file)
             _, filename = os.path.split(img_name)
             filename, _ = os.path.splitext(filename)
             label_txt = Img.save_data(save_img, str(i) + '_' + filename)
@@ -427,6 +427,9 @@ if __name__ == '__main__':
         print("please set arg(dataset_name num_labels rotate) ex: python SetPreparation.py pcnWFLW 68 nonrotate")
         print("if you use pcn dataset, add nonrotate")
         exit()
+
+    AUGMENT_NUM = 10
+    print("AUGMENT_NUM: ", AUGMENT_NUM)
 
     root_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -484,5 +487,5 @@ if __name__ == '__main__':
         else:
             is_train = True
         imgs = get_dataset_list(imageDirs, outDir, landmarkDir, is_train, rotate, int(
-            num_labels), image_size, dataset)
+            num_labels), image_size, dataset, AUGMENT_NUM)
     print('end')
