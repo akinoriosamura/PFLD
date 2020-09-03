@@ -144,8 +144,8 @@ def main(args):
         print("============ get tfrecord train data ===============")
         train_loader.create_tfrecord()
         num_train_file = train_loader.num_file
-        #train_loader.calMeanShape()
-        #list_ops['mean_shape'] = train_loader.meanShape
+        # train_loader.calMeanShape()
+        # list_ops['mean_shape'] = train_loader.meanShape
         print("============ get tfrecord test data ===============")
         test_loader.create_tfrecord()
         num_test_file = test_loader.num_file
@@ -219,7 +219,7 @@ def main(args):
         #                                                                                phase_train_placeholder, args)
         landmarks_pre, landmarks_loss, euler_angles_pre = create_model(image_batch, landmark_batch,
                                                                        phase_train_placeholder, args)
-        # landmarks_pre = tf.add(_landmarks_pre, list_ops['mean_shape'])
+        # landmarks_pre = tf.add(landmarks_pre, list_ops['mean_shape'])
         attributes_w_n = tf.to_float(attribute_batch[:, 1:6])
         # _num = attributes_w_n.shape[0]
         mat_ratio = tf.reduce_mean(attributes_w_n, axis=0)
@@ -229,25 +229,23 @@ def main(args):
         attributes_w_n = tf.reduce_sum(attributes_w_n, axis=1)
         list_ops['attributes_w_n_batch'] = attributes_w_n
 
-        # L2_loss = tf.add_n(tf.losses.get_regularization_losses())
-        # _sum_k = tf.reduce_sum(tf.map_fn(
-        #     lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
-        # loss_sum = tf.reduce_sum(
+        # default loss
+        # print("=== default loss ===")
+        # losses_sum = tf.reduce_sum(
         #     tf.square(landmark_batch - landmarks_pre), axis=1)
-        # loss_sum = tf.reduce_mean(loss_sum)  # * _sum_k)#  * attributes_w_n)
-        # loss_sum += L2_loss
+        # debug_l = []
 
         _landmarks_pre = tf.reshape(landmarks_pre, [-1, args.num_labels, 2])
         _landmark_batch = tf.reshape(landmark_batch, [-1, args.num_labels, 2])
         # import pdb;pdb.set_trace()
         # wing loss
-        # print("=== wing loss ===")
-        # wing_losses, debug_l = wing_loss(_landmarks_pre, _landmark_batch)
-        # losses_sum = tf.reduce_sum(wing_losses, axis=[1, 2])
-        # weight wing loss
-        print("=== weight wing loss ===")
-        wing_losses, debug_l = weight_wing_loss(_landmarks_pre, _landmark_batch)
+        print("=== wing loss ===")
+        wing_losses, debug_l = wing_loss(_landmarks_pre, _landmark_batch)
         losses_sum = tf.reduce_sum(wing_losses, axis=[1, 2])
+        # weight wing loss
+        #print("=== weight wing loss ===")
+        #wing_losses, debug_l = weight_wing_loss(_landmarks_pre, _landmark_batch)
+        #losses_sum = tf.reduce_sum(wing_losses, axis=[1, 2])
         # weighted loss
         # print("=== weight loss ===")
         # weight_losses, debug_l = weighted_loss(_landmarks_pre, _landmark_batch)
@@ -285,7 +283,7 @@ def main(args):
             print("no quantize, so float: ", args.num_quant)
 
         train_op, lr_op = train_model(
-            loss_sum, global_step, num_train_file, args)
+            loss_sum, global_step, epoch_size, args)
 
         list_ops['landmarks'] = landmarks_pre
         list_ops['L2_loss'] = L2_loss
@@ -350,7 +348,7 @@ def main(args):
             for epoch in range(epoch_start, args.max_epoch):
                 # use tfrecords
                 print("get dataset start")
-                # import pdb;pdb.set_trace()
+                #import pdb;pdb.set_trace()
                 records_order = random.sample(
                     train_loader.records_list, train_loader.num_records)
                 assert len(records_order) == train_loader.num_records
@@ -378,9 +376,11 @@ def main(args):
                     list_ops['num_records'] = train_loader.num_records
 
                     print("train start")
+                    train_num_in_record = epoch_size // train_loader.num_records
+                    print("train_num_in_record: ", train_num_in_record)
                     start = time.time()
                     train_L, train_L2 = train(
-                        sess, epoch_size, epoch, list_ops, args)
+                        sess, train_num_in_record, epoch, list_ops, args)
                     print("train time: {}" .format(time.time() - start))
 
                     summary, _, _ = sess.run(
@@ -400,7 +400,7 @@ def main(args):
                         saver.export_meta_graph(metagraph_path)
                     print("save checkpoint: {}".format(checkpoint_path))
 
-                if epoch % 30 == 0 and epoch != 0 and epoch > 0:
+                if epoch % 20 == 0 and epoch != 0 and epoch > 0:
                     print("test start")
                     start = time.time()
                     test_ME, test_FR, test_loss = test(
@@ -449,8 +449,8 @@ def train(sess, epoch_size, epoch, list_ops, args):
             list_ops['attributes_w_n_batch']: attributes_w_n
         }
         # import pdb;pdb.set_trace()
-        loss, _, lr, L2_loss, debug_l = sess.run([list_ops['loss'], list_ops['train_op'], list_ops['lr_op'],
-                                         list_ops['L2_loss'], list_ops['debug_l']], feed_dict=feed_dict)
+        loss, _, lr, L2_loss, debug_l, global_step = sess.run([list_ops['loss'], list_ops['train_op'], list_ops['lr_op'],
+                                         list_ops['L2_loss'], list_ops['debug_l'], list_ops['global_step']], feed_dict=feed_dict)
 
         if ((i + 1) % 10) == 0 or (i + 1) == epoch_size:
             Epoch = 'Epoch:[{:<4}][{:<4}/{:<4}][{:<4}/{:<4}]'.format(
@@ -483,7 +483,6 @@ def test(sess, list_ops, args):
             list_ops['phase_train_placeholder']: False
         }
         pre_landmarks = sess.run(list_ops['landmarks'], feed_dict=feed_dict)
-        # pre_landmarks += list_ops['mean_shape']
 
         diff = pre_landmarks - landmarks
         loss = np.sum(diff * diff)
@@ -512,7 +511,7 @@ def test(sess, list_ops, args):
                 else:
                     print("eye error")
                     exit()
-                time.sleep(3)
+                # time.sleep(3)
                 interocular_distance = np.sqrt(
                     np.sum(
                         pow((landmarks[k][left_eye_edge*2:left_eye_edge*2+2] -
@@ -603,7 +602,7 @@ def parse_arguments(argv):
     parser.add_argument('--test_list', type=str,
                         default='data/test_data/list.txt')
     parser.add_argument('--seed', type=int, default=666)
-    parser.add_argument('--max_epoch', type=int, default=10000)
+    parser.add_argument('--max_epoch', type=int, default=81)
     parser.add_argument('--image_size', type=int, default=112)
     parser.add_argument('--num_labels', type=int, default=98)
     parser.add_argument('--image_channels', type=int, default=3)
@@ -612,7 +611,7 @@ def parse_arguments(argv):
     parser.add_argument('--model_dir', type=str, default='models1/model_test')
     parser.add_argument('--learning_rate', type=float, default=0.001)
     parser.add_argument('--lr_epoch', type=str,
-                        default='25,40,60,80,100,500,990,1010')
+                        default='20,40,60,80,100,500,990,1010')
     parser.add_argument('--weight_decay', type=float, default=5e-5)
     parser.add_argument('--level', type=str, default='L5')
     parser.add_argument('--save_image_example', action='store_false')

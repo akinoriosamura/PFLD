@@ -3,11 +3,11 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
 
-def train_model(loss, global_step, data_num, args):
+def train_model(loss, global_step, epoch_size, args):
     lr_factor = 0.1
     lr_epoch = args.lr_epoch.strip().split(',')
     lr_epoch = list(map(int, lr_epoch))
-    boundaries = [epoch * data_num // args.batch_size for epoch in lr_epoch]
+    boundaries = [epoch * epoch_size for epoch in lr_epoch]
     lr_values = [args.learning_rate * (lr_factor**x)
                  for x in range(0, len(lr_epoch) + 1)]
     lr_op = tf.train.piecewise_constant(global_step, boundaries, lr_values)
