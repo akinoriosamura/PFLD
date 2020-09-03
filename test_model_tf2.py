@@ -18,6 +18,9 @@ tf.keras.backend.set_floatx('float32')
 
 
 def main(args):
+    train_stage = 'stage1'
+    print("============= this phase is : ", train_stage)
+
     print("args: ", args)
     np.random.seed(args.seed)
     time.sleep(3)
@@ -51,7 +54,6 @@ def main(args):
 
     # ================== create models ================
     print("=================== create models ===============")
-    train_stage = 'stage1'
     model = XinNingNetwork(args.num_labels, args.image_size, mean_shape, train_stage)
     # import pdb;pdb.set_trace()
     # get_model_summary(model, [args.image_size, args.image_size, 3])
@@ -94,29 +96,29 @@ def test(batch_test_dataset, num_test_file, model, args, mean_shape, train_stage
     print("test epoch size: ", epoch_size)
     for i, (image_batch, landmarks_batch, attribute_batch, euler_batch) in enumerate(batch_test_dataset):  # batch_num
         print("start epoch: ", i)
-        all_num += 1
         # import pdb;pdb.set_trace()
         outputs = test_step(model, image_batch)
         # import pdb;pdb.set_trace()
-        landmarks_pre = (outputs[0] + mean_shape).numpy()
         # landmarks_pre = outputs[0].numpy()
+        landmarks_pre = (outputs[0] + mean_shape).numpy()
         if train_stage == 'stage2':
-            landmarks_pre += outputs[1]
+            landmarks_pre += outputs[1].numpy()
 
         for k in range(len(landmarks_pre)):
+            all_num += 1
             # save label image
             # import pdb;pdb.set_trace()
             one_image = image_batch[k]
-            one_landmark_pre = landmarks_pre[k]
-            one_landmark = landmarks_batch[k].numpy()
+            one_landmark_pre = landmarks_pre[k]#  * args.image_size
+            one_landmark = landmarks_batch[k].numpy()#  * args.image_size
 
             annotate_landmarks_pre = one_landmark_pre.reshape(-1, 2) * args.image_size
             img_tmp = one_image.numpy().copy()
             img_tmp = (img_tmp * 127.5) + 127.5
             for (x, y) in annotate_landmarks_pre.astype(np.int32):
                 cv2.circle(img_tmp, (x, y), 1, (0, 255, 0), 1)
-            print(os.path.join(args.out_dir, str(k)+".jpg"))
-            cv2.imwrite(os.path.join(args.out_dir, str(k)+".jpg"), img_tmp)
+            print(os.path.join(args.out_dir, str(all_num)+".jpg"))
+            cv2.imwrite(os.path.join(args.out_dir, str(all_num)+".jpg"), img_tmp)
 
             # 目の両端
             if args.num_labels == 98:
@@ -142,6 +144,7 @@ def test(batch_test_dataset, num_test_file, model, args, mean_shape, train_stage
                 error_all_points += error
 
             # loss
+            # import pdb;pdb.set_trace()
             diff = one_landmark_pre - one_landmark
             loss = np.sum(diff * diff)
             loss_sum += loss
@@ -157,18 +160,18 @@ def test(batch_test_dataset, num_test_file, model, args, mean_shape, train_stage
             # d_eyes = (np.linalg.norm(
             #     landmark_2[left_eye_edge] - landmark_2[right_eye_edge])*args.image_size)**2
             # import pdb;pdb.set_trace()
-            diff_2 = one_landmark_pre_2 - one_landmark_2
-            _RMSE = np.mean(np.sum(diff_2 * diff_2, 1))
-            diff_eyes = np.array([diff[left_eye_edge * 2], diff[left_eye_edge * 2 + 1], diff[right_eye_edge * 2], diff[right_eye_edge * 2 + 1]])
-            d_eyes = np.sum(diff_eyes * diff_eyes)
-            RMSE = _RMSE / d_eyes
-            print("RMSE: ", RMSE)
-            if np.isnan(RMSE) or np.isinf(RMSE):  # or RMSE > 50:
-                import pdb
-                pdb.set_trace()
-            _NRMSE += RMSE
+            # diff_2 = one_landmark_pre_2 - one_landmark_2
+            # _RMSE = np.mean(np.sum(diff_2 * diff_2, 1))
+            # diff_eyes = np.array([diff[left_eye_edge * 2], diff[left_eye_edge * 2 + 1], diff[right_eye_edge * 2], diff[right_eye_edge * 2 + 1]])
+            # d_eyes = np.sum(diff_eyes * diff_eyes)
+            # RMSE = _RMSE / d_eyes
+            # print("RMSE: ", RMSE)
+            # if np.isnan(RMSE) or np.isinf(RMSE):  # or RMSE > 50:
+            #     import pdb
+            #     pdb.set_trace()
+            # _NRMSE += RMSE
 
-            time.sleep(3)
+            # time.sleep(3)
             interocular_distance = np.sqrt(
                 np.sum(
                     pow((one_landmark[left_eye_edge*2:left_eye_edge*2+2] -
@@ -177,7 +180,7 @@ def test(batch_test_dataset, num_test_file, model, args, mean_shape, train_stage
             )
             error_norm = error_all_points / \
                 (interocular_distance * args.num_labels)
-
+            # error_norm = error_all_points
             print("error_norm: ", error_norm)
             landmark_error += error_norm
             if error_norm >= 0.02:
@@ -187,8 +190,8 @@ def test(batch_test_dataset, num_test_file, model, args, mean_shape, train_stage
     print("num_test_file: ", num_test_file)
     loss = loss_sum / (num_test_file * 1.0)
     print('Test epochs: {}\tLoss {:2.3f}'.format(epoch_size, loss))
-    NRMSE = _NRMSE / (num_test_file * 1.0)
-    print('Test NRMSE {:2.3f}'.format(NRMSE))
+    # NRMSE = _NRMSE / (num_test_file * 1.0)
+    # print('Test NRMSE {:2.3f}'.format(NRMSE))
 
     print('mean error and failure rate')
     landmark_error_norm = landmark_error / (num_test_file * 1.0)
@@ -233,8 +236,8 @@ def parse_arguments(argv):
     parser.add_argument('--depth_multi', type=float, default=1)
     parser.add_argument('--out_dir', type=str, default='sample_result')
     parser.add_argument('--num_quant', type=int, default=64)
-    parser.add_argument('--tfrecords_dir', type=str,
-                        default='/data/tfrecords_xin')
+    parser.add_argument('--tfrecords_dir', type=str, default='./tfrecords_xin')
+    # parser.add_argument('--tfrecords_dir', type=str, default='./tfrecords_xin_gray')
     parser.add_argument('--is_augment', type=str2bool,
                         default=False, help='Whether to augment')
 

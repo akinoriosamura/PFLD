@@ -16,9 +16,30 @@ from tensorflow.keras import Model
 tf.keras.backend.set_floatx('float32')
 # from pfld import create_model
 
+def wing_loss(landmarks, labels, w=10.0, epsilon=2.0):
+    """
+    Arguments:
+        landmarks, labels: float tensors with shape [batch_size, num_landmarks, 2].
+        w, epsilon: a float numbers.
+    Returns:
+        a float tensor with shape [].
+    """
+    print("=== wing loss === ")
+    x = landmarks - labels
+    c = w * (1.0 - math.log(1.0 + w/epsilon))
+    absolute_x = tf.abs(x)
+    #import pdb;pdb.set_trace()
+    losses = tf.where(
+        tf.greater(w, absolute_x),
+        w * tf.math.log(1.0 + absolute_x/epsilon),
+        absolute_x - c
+    )
+
+    return losses, [absolute_x, losses]
 
 def main(args):
-    train_stage = 'stage2'
+    train_stage = 'stage1'
+    print("============= this phase is : ", train_stage)
 
     debug = (args.debug == 'True')
     print("args: ", args)
@@ -56,15 +77,18 @@ def main(args):
     print("=================== create models ===============")
     model = XinNingNetwork(args.num_labels, args.image_size, mean_shape, train_stage)
     # import pdb;pdb.set_trace()
-    # get_model_summary(model, [args.image_size, args.image_size, 3])
+    if 'gray' in args.tfrecords_dir:
+        _in_shape = [args.image_size, args.image_size, 1]
+    else:
+        _in_shape = [args.image_size, args.image_size, 3]
+    print("_in_shape: ", _in_shape)
+    get_model_summary(model, _in_shape)
 
     def loss_objects(outputs, targets, L2_losses):
-        # landmarks_pre = outputs[0]
-        # landmarks_pre = tf.map_fn(lambda x: tf.add(x, tf.cast(tf.constant(mean_shape), dtype=tf.float32)), landmarks_out)
         debug_list = []
         debug_list.append(outputs[0])
-        landmarks_pre = tf.add(tf.cast(mean_shape, dtype=tf.float32), outputs[0])
         # landmarks_pre = outputs[0]
+        landmarks_pre = tf.add(tf.cast(mean_shape, dtype=tf.float32), outputs[0])
         if train_stage == 'stage2':
             debug_list.append(landmarks_pre)
             debug_list.append(outputs[1])
@@ -82,8 +106,17 @@ def main(args):
 
         L2_loss = tf.add_n(L2_losses)
         # _sum_k = tf.reduce_sum(tf.map_fn(lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
-        loss_sum = tf.reduce_sum(
-            tf.square(landmark_batch - landmarks_pre), axis=1)
+        # default loss
+        # print("=== default loss ===")
+        # loss_sum = tf.reduce_sum(tf.square(landmark_batch - landmarks_pre), axis=1)
+        _landmarks_pre = tf.reshape(landmarks_pre, [-1, args.num_labels, 2])
+        _landmark_batch = tf.reshape(landmark_batch, [-1, args.num_labels, 2])
+        # import pdb;pdb.set_trace()
+        # wing loss
+        print("=== wing loss ===")
+        wing_losses, debug_l = wing_loss(_landmarks_pre, _landmark_batch)
+        loss_sum = tf.reduce_sum(wing_losses, axis=[1, 2])
+        # summarize
         loss_sum = tf.reduce_mean(loss_sum)  # * _sum_k)#  * attributes_w_n)
         loss_sum += L2_loss
         debug_list.append(landmark_batch - landmarks_pre)
@@ -110,18 +143,27 @@ def main(args):
 
         gradients = tape.gradient(loss_value, model.trainable_variables)
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-        return heats, loss_value, L2_loss, debug_list
-
-    epoch_start = 0
+        return heats, loss_value, L2_loss, debug_list, outputs
 
     # ============ resotre pretrain =============
     print("================= resotre pretrain if exist =================")
+    ckpt = tf.train.Checkpoint(optimizer=optimizer, model=model)
+    # import pdb; pdb.set_trace()
     if args.pretrained_model:
         pretrained_model = args.pretrained_model
-        root = tf.train.Checkpoint(optimizer=optimizer, model=model)
-        root.restore(tf.train.latest_checkpoint(pretrained_model))
-        print('Restore from model directory: {}'.format(pretrained_model))
-        # import pdb;pdb.set_trace()
+        manager = tf.train.CheckpointManager(ckpt, pretrained_model, max_to_keep=None)
+        latest_ckpt_path = manager.latest_checkpoint
+        ckpt.restore(latest_ckpt_path)
+        print('Restore from model : {}'.format(latest_ckpt_path))
+        if args.pretrained_model != args.model_dir:
+            # in stage2 pretrain start
+            epoch_start = 0
+        else:
+            epoch_start = int(latest_ckpt_path[latest_ckpt_path.find('ckpt-') + 5:]) + 1
+    else:
+        print("no pretrained exist")
+        epoch_start = 0
+    manager = tf.train.CheckpointManager(ckpt, args.model_dir, max_to_keep=None)
 
     # model.compile(
     #     optimizer=optimizer,
@@ -129,10 +171,12 @@ def main(args):
     #     loss=loss_objects,
     #     metrics=['mae']
     # )
-
-    all_step = 0
+    # import pdb; pdb.set_trace()
+    all_step = epoch_start * epoch_size
+    print("all_step: ", all_step)
     for epoch in range(epoch_start, args.max_epoch):
         batch_num = 0
+        start_epoch = time.time()
         print("get dataset start")
         records_order = random.sample(
             train_loader.records_list, train_loader.num_records)
@@ -143,20 +187,22 @@ def main(args):
                 print("delete dataset memory ")
                 del train_dataset
                 del batch_train_dataset
+                del image_batch
+                del landmarks_batch
+                del euler_batch
                 gc.collect()
             print("target_train_tfrecord_path : ", target_train_tfrecord_path)
             train_dataset = train_loader.get_tfrecords(
                 target_train_tfrecord_path)
+            print("get train_dataset")
             batch_train_dataset = train_dataset.batch(args.batch_size)
-
+            print("get batch_train_dataset")
             for batch_i, (image_batch, landmarks_batch, _, euler_batch) in enumerate(batch_train_dataset):
                 # start = time.time()
-                heats, losses, L2_loss, debug_list = train_step(
+                # import pdb; pdb.set_trace()
+                heats, losses, L2_loss, debug_list, outputs = train_step(
                     image_batch, [landmarks_batch, euler_batch])
                 # print("trainable v num: ", len(model.trainable_variables))
-                # save heatmap image
-                # import pdb;pdb.set_trace()
-                cv2.imwrite("./test_heatmap.jpg", heats[1][0].numpy()*256)
                 # outputs = model.fit(image_batch)
                 # print("elapsed: ", time.time() - start)
                 if ((batch_i + 1) % 10) == 0 or (batch_i + 1) == epoch_size:
@@ -167,14 +213,29 @@ def main(args):
                         losses, L2_loss),
                     print('{}\t{}\t lr {:2.3}'.format(
                         Epoch, Loss, optimizer.learning_rate))
+                    # save sample image
+                    # import pdb;pdb.set_trace()
+                    _sample_img = image_batch[0].numpy() * 127.5 + 127.5
+                    _sampel_heatmap = 256 * np.concatenate([heats[1][0].numpy(), heats[1][0].numpy(), heats[1][0].numpy()], axis=2)
+                    cv2.imwrite("./test_heatmap.jpg", (_sample_img + _sampel_heatmap))
+                    _sample_stage1_land = debug_list[1][0].numpy().reshape(-1, 2) * 112
+                    for (x, y) in _sample_stage1_land.astype(np.int32):
+                        cv2.circle(_sample_img, (x, y), 1, (0, 255, 0), 1)
+                    cv2.imwrite("./test_land.jpg", _sample_img)
+                    if train_stage == 'stage2':
+                        _sample_img_2 = (image_batch[0].numpy() * 127.5 + 127.5).copy()
+                        _sample_stage2_land = debug_list[3][0].numpy().reshape(-1, 2) * 112
+                        for (x, y) in _sample_stage2_land.astype(np.int32):
+                            cv2.circle(_sample_img_2, (x, y), 1, (0, 255, 0), 1)
+                        cv2.imwrite("./test_land2.jpg", _sample_img_2)
+                    #import pdb;pdb.set_trace()
+
                 batch_num += 1
                 all_step += 1
                 optimizer.learning_rate = learning_rate_fn(all_step)
 
-        checkpoint_path = os.path.join(model_dir, 'model.ckpt')
-        root = tf.train.Checkpoint(optimizer=optimizer, model=model)
-        root.save(checkpoint_path)
-        print("save checkpoint: {}".format(checkpoint_path))
+        save_checkpoint_path = manager.save(checkpoint_number=epoch)
+        print("save checkpoint: {}".format(save_checkpoint_path))
         savedmodel_path = os.path.join(model_dir, 'SavedModel/')
         tf.saved_model.save(model, savedmodel_path)
         print("save SavedModel: {}".format(savedmodel_path))
@@ -184,6 +245,7 @@ def main(args):
             f.write(tflite_model)
         print("save tflite: {}".format(os.path.join(model_dir, "xinning.tflite")))
         print("trainable v num: ", len(model.trainable_variables))
+        print("elapsed epoch: ", time.time() - start_epoch)
 
         if epoch % 20 == 0 and epoch != 0 and epoch > 0:
             # import pdb;pdb.set_trace()
@@ -209,10 +271,10 @@ def test(batch_test_dataset, num_test_file, model, args, mean_shape, train_stage
         print("start epoch: ", i)
         outputs = test_step(model, image_batch)
         # import pdb;pdb.set_trace()
-        landmarks_pre = (outputs[0] + mean_shape).numpy()
         # landmarks_pre = outputs[0].numpy()
+        landmarks_pre = (outputs[0] + mean_shape).numpy()
         if train_stage == 'stage2':
-            landmarks_pre += outputs[1]
+            landmarks_pre += outputs[1].numpy()
             # landmarks_pre = outputs[1].numpy()
         diff = landmarks_pre - landmarks_batch
         loss = np.sum(diff * diff)
@@ -240,7 +302,7 @@ def test(batch_test_dataset, num_test_file, model, args, mean_shape, train_stage
                 else:
                     print("eye error")
                     exit()
-                time.sleep(3)
+                # time.sleep(3)
                 interocular_distance = np.sqrt(
                     np.sum(
                         pow((landmarks_batch[k][left_eye_edge*2:left_eye_edge*2+2] -
@@ -282,10 +344,10 @@ def get_model_summary(model, in_shape):
     # Functional APIの「仮のモデル」を取得
     #f_model = get_functional_model(model, in_shape)
     # モデルの内容を出力
-    model.build(input_shape=(None,112,112,3), training=True) 
+    model.build(input_shape=(None,in_shape[0],in_shape[1],in_shape[2])) # , training=True) 
     model.summary()
     # モデルの構成図を表示
-    tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True, to_file='model.png')
+    # tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True, to_file='model.png')
     print("weights:", len(model.weights))
     print("trainable weights:", len(model.trainable_weights))
     print("===== save model summury ======")
@@ -307,7 +369,7 @@ def parse_arguments(argv):
     parser.add_argument('--test_list', type=str,
                         default='data/test_data/list.txt')
     parser.add_argument('--seed', type=int, default=666)
-    parser.add_argument('--max_epoch', type=int, default=10000)
+    parser.add_argument('--max_epoch', type=int, default=81)
     parser.add_argument('--image_size', type=int, default=112)
     parser.add_argument('--num_labels', type=int, default=98)
     parser.add_argument('--image_channels', type=int, default=3)
@@ -316,15 +378,15 @@ def parse_arguments(argv):
     parser.add_argument('--model_dir', type=str, default='models1/model_test')
     parser.add_argument('--learning_rate', type=float, default=0.001)
     parser.add_argument('--lr_epoch', type=str,
-                        default='20,30,40,60,100,160,180,200,500,990,1010')
+                        default='20,30,40,60,80,100,110,120,990,1010')
     parser.add_argument('--weight_decay', type=float, default=5e-5)
     parser.add_argument('--level', type=str, default='L5')
     parser.add_argument('--save_image_example', action='store_false')
     parser.add_argument('--debug', type=str, default='False')
     parser.add_argument('--depth_multi', type=float, default=1)
     parser.add_argument('--num_quant', type=int, default=64)
-    parser.add_argument('--tfrecords_dir', type=str,
-                        default='/data/tfrecords_xin')
+    parser.add_argument('--tfrecords_dir', type=str, default='./tfrecords_xin')
+    # parser.add_argument('--tfrecords_dir', type=str, default='./tfrecords_xin_gray')
     parser.add_argument('--is_augment', type=str2bool,
                         default=False, help='Whether to augment')
 

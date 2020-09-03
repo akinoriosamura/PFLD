@@ -3,17 +3,17 @@ phase=$1
 num_labels=68 # 20, 52
 depth_multi=1 # default = 1, like model complicated
 num_quant=64
-save_model=models2/save_models/68/sam_xin_300W_nomeanshape_direct2
+save_model=models2/save_models/68/sam_xin_300W_simple_wing
 file_list=data/rotated_train_300W/list.txt
 test_list=data/rotated_test_300W/list.txt
 # file_list=data/test_moru_dataset/list.txt
 # test_list=data/test_moru_dataset/list.txt
-pre_model=models2/save_models/68/sam_xin_300W_nomeanshape_1
-out_dir=sample_sam_xin_300W_nomeanshape_direct2
+pre_model=models2/save_models/68/sam_xin_300W_simple_wing
+out_dir=sample_sam_xin_300W_simple_wing
 lr=0.0001
 is_augment=False  # True or False
 image_size=112
-batch_size=64
+batch_size=32
 
 # --pretrained_model=${pre_model} \
 # CUDA_VISIBLE_DEVICES='' \

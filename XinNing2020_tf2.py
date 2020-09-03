@@ -7,18 +7,22 @@ import gc
 import sys
 import os
 import tensorflow as tf
+import tensorflow_addons as tfa
 from generate_data_tfrecords_tf2 import TfrecordsLoader
 from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, GlobalAveragePooling2D, BatchNormalization
 from tensorflow.keras import Model
 tf.keras.backend.set_floatx('float32')
 
+def mish(x):
+    return x * tf.math.tanh(tf.math.softplus(x))
+
 
 class XinNingNetwork(Model):
-    def __init__(self, num_labels, img_size, meat_shape, train_phase='stage1'):
+    def __init__(self, num_labels, img_size, mean_shape, train_phase='stage1'):
         super(XinNingNetwork, self).__init__()
         self.num_labels = num_labels
         self.img_size = img_size
-        self.meat_shape = tf.cast(meat_shape, dtype=tf.float32)
+        self.mean_shape = tf.cast(mean_shape, dtype=tf.float32)
         if train_phase=='stage1':
             self.train_stage1 = True
         elif train_phase=='stage2':
@@ -102,6 +106,8 @@ class XinNingNetwork(Model):
             strides=(s, s),
             padding=padding,
             activation=tf.nn.relu6,
+            # activation=tf.nn.relu,
+            # activation=mish,
             use_bias=use_bias,
             kernel_initializer=tf.compat.v1.truncated_normal_initializer(stddev=0.01),
             bias_initializer='zeros',
@@ -123,7 +129,7 @@ class XinNingNetwork(Model):
         return Dense(
             units,
             use_bias=True,
-            activation=tf.nn.relu6,
+            activation=None, # tf.nn.relu6,
             kernel_initializer=tf.compat.v1.truncated_normal_initializer(stddev=0.01),
             kernel_regularizer=tf.keras.regularizers.l2(0.01),
             trainable=trainable,
@@ -178,27 +184,31 @@ class XinNingNetwork(Model):
         # land is normalized so return by img size multiply
         land_x = tf.math.multiply(tf.add(land[0], ms[0]), self.img_size)
         land_y = tf.math.multiply(tf.add(land[1], ms[1]), self.img_size)
-
+        # no mean shape
         # land_x = tf.math.multiply(land[0], self.img_size)
         # land_y = tf.math.multiply(land[1], self.img_size)
+        # no normalized
         # land_x = tf.add(land[0], ms[0])
         # land_y = tf.add(land[1], ms[1])
         _xx = tf.pow(tf.subtract(tf.cast(xx, dtype=tf.float32), land_x), 2)
         _yy = tf.pow(tf.subtract(tf.cast(yy, dtype=tf.float32), land_y), 2)
         d2 = tf.add(_xx, _yy)
-        heatmap_tmp = tf.math.exp(
-            tf.math.negative(d2), name="one_label_heatmap")
+        heatmap_tmp = tf.math.exp(tf.math.divide(
+            tf.math.negative(d2), (8)), name="one_label_heatmap")
+        # max_v = tf.reduce_max(heatmap_tmp)
+        # heatmap_tmp = tf.math.divide(heatmap_tmp, max_v)
 
         return heatmap_tmp
 
     def img_heatmap(self, land):
         # land: [68, 2]
-        _meat_shapes = tf.reshape(self.meat_shape, [68, 2])
-        one_label_heatmap = tf.vectorized_map(self.label_heatmap, (land, _meat_shapes))
+        _mean_shapes = tf.reshape(self.mean_shape, [68, 2])
+        one_label_heatmap = tf.vectorized_map(self.label_heatmap, (land, _mean_shapes))
         labels_heatmap = tf.reduce_sum(
             one_label_heatmap, 0, name="label_heatmap")
-        max_v = tf.reduce_max(labels_heatmap)
-        labels_heatmap = tf.math.divide(labels_heatmap, max_v)
+        labels_heatmap = tf.where(labels_heatmap > 1, 1.0, labels_heatmap)
+        #max_v = tf.reduce_max(labels_heatmap)
+        #labels_heatmap = tf.math.divide(labels_heatmap, max_v)
         return labels_heatmap
 
     def HeatMap(self, output):
@@ -260,10 +270,6 @@ class XinNingNetwork(Model):
         _heatmap, _heat_values = self.HeatMap(_output_1)
         print(_heatmap.name, _heatmap.shape)
         print("=== finish stage 1 ===")
-        if self.train_stage1:
-            # if True:
-            print("=== finish train in stage 1 ===")
-            return [_output_1], _heat_values
 
         ###### stage2 ######
         print("=== start stage 2 ===")
@@ -315,6 +321,10 @@ class XinNingNetwork(Model):
         print("last layer name")
         print(_output_2.name, _output_2.shape)
         print("=== finish stage 2 ===")
-        print("=== finish train in stage 2 ===")
-
-        return [_output_1, _output_2], _heat_values
+        if self.train_stage1:
+            # if True:
+            print("====== this train stage1 ======")
+            return [_output_1], _heat_values
+        else:
+            print("====== this train stage2 ======")
+            return [_output_1, _output_2], _heat_values

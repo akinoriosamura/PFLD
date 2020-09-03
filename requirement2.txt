@@ -58,6 +58,7 @@ shapely
 six
 subprocess32
 termcolor
+tensorflow_addons
 threadpoolctl
 toolz
 torch

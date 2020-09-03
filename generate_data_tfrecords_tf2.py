@@ -13,7 +13,7 @@ class TfrecordsLoader():
     def __init__(self, file_list, args, phase, model_type, debug=False):
         print("labels; ", args.num_labels)
         time.sleep(3)
-        self.num_records = 2
+        self.num_records = 15
         self.file_list = file_list
         with open(self.file_list, 'r') as f:
             self.lines = f.readlines()
@@ -40,7 +40,10 @@ class TfrecordsLoader():
         landmark = np.asarray(landmark, dtype=np.float32)
         attribute = np.asarray(attribute, dtype=np.int32)
         euler_angle = np.asarray(euler_angle, dtype=np.float32)
-        self.images_shape = [self.args.image_size, self.args.image_size, 3]
+        if 'gray' in self.args.tfrecords_dir:
+            self.images_shape = [self.args.image_size, self.args.image_size, 1]
+        else:
+            self.images_shape = [self.args.image_size, self.args.image_size, 3]
         self.landmarks_shape = landmark.shape
         self.attributes_shape = attribute.shape
         self.euler_angles_shape = euler_angle.shape
@@ -111,6 +114,10 @@ class TfrecordsLoader():
                 image = image / 256.0
             elif self.model_type == 'xin':
                 # print("normalizetion: -127.5 / 127.5 in xin")
+                # import pdb; pdb.set_trace()
+                if 'gray' in self.args.tfrecords_dir:
+                    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                    image = np.expand_dims(image, axis=-1)
                 image = (image - 127.5) / 127.5
             return image
 
