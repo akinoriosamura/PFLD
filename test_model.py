@@ -34,6 +34,9 @@ def get_mean_shape(args):
     return mean_shape
 
 def main(args):
+    test_type = "all"
+    print("============= test_type " + test_type + " =========")
+    time.sleep(2)
     print("args: ", args)
     if not os.path.exists(args.out_dir):
         os.mkdir(args.out_dir)
@@ -170,13 +173,6 @@ def main(args):
                     pdb.set_trace()
                 NRMSE += RMSE
 
-                error_all_points = 0
-                # num points
-                for count_point in range(pre_landmark.shape[0] // 2):
-                    error_diff = pre_landmark[(count_point * 2):(count_point * 2 + 2)] - \
-                        landmark[(count_point * 2):(count_point * 2 + 2)]
-                    error = np.sqrt(np.sum(error_diff * error_diff))
-                    error_all_points += error
                 # 目の両端
                 if args.num_labels == 98:
                     left_eye_edge = 60
@@ -194,6 +190,17 @@ def main(args):
                 # print("eye; ", right_eye_edge)
                 # print("labels: ", args.num_labels)
                 # time.sleep(2)
+
+                error_all_points = 0
+                # num points
+                for count_point in range(pre_landmark.shape[0] // 2):
+                    error_diff = pre_landmark[(count_point * 2):(count_point * 2 + 2)] - \
+                        landmark[(count_point * 2):(count_point * 2 + 2)]
+                    error = np.sqrt(np.sum(error_diff * error_diff))
+                    if (test_type == 'lip') and (48 <= count_point):
+                        error *= 3
+                    error_all_points += error
+
                 interocular_distance = np.sqrt(
                     np.sum(
                         pow((landmark[left_eye_edge*2:left_eye_edge*2+2] - landmark[right_eye_edge*2:right_eye_edge*2+2]), 2)

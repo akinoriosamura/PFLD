@@ -32,6 +32,17 @@ class ImageDate():
     def __init__(self, line, imgDir, num_labels, image_size, dataset):
         self.image_size = image_size
         line = line.strip().split()
+        # with open("mean_face_shape.txt", mode='r') as mf:
+        #     _meanShape = mf.readline()
+        #     _meanShape = _meanShape.split(" ")
+        #     self.mean_face = np.array([float(mf) for mf in _meanShape])
+        #     # 唇両端: 48 - 54
+        #     d_vert_mean_face = np.linalg.norm(self.mean_face[54] - self.mean_face[48])
+        #     # 唇上下: 51 - 57
+        #     d_wide_mean_face = np.linalg.norm(self.mean_face[57] - self.mean_face[51])
+        #     # 縦横比
+        #     import pdb; pdb.set_trace()
+        #     self.aspect_rat_mean_shape = d_wide_mean_face / d_vert_mean_face
         """
         num_labels = 98
         #0-195: landmark 坐标点  196-199: bbox 坐标点;
@@ -202,6 +213,79 @@ class ImageDate():
 
         cv2.imwrite("./setprepa_sam_label.jpg", img)
 
+    def cal_hard_rotate_num(self, img, lands, repeat):
+        # 縦横比で比較
+        # 唇両端: 48 - 54
+        # d_vert = np.linalg.norm(lands[54] - lands[48])
+        # # 唇上下: 51 - 57
+        # d_wide = np.linalg.norm(lands[57] - lands[51])
+        # import pdb; pdb.set_trace()
+        # aspect_rat = d_wide / d_vert
+
+        # tracked pointsからpitch yaw rollを計算し保存
+        euler_angles_landmark = []
+        for index in self.tracked_points:
+            euler_angles_landmark.append(
+                [lands[index][0] * img.shape[0], lands[index][1] * img.shape[1]])
+        euler_angles_landmark = np.asarray(
+            euler_angles_landmark).reshape((-1, 28))
+        # (pitch = 上下, yaw = 横)
+        pitch, yaw, roll = calculate_pitch_yaw_roll(
+            euler_angles_landmark[0], self.image_size, self.image_size)
+        # pitch(上下) is negative and smaller then num is bigger
+        if 5 <= pitch < 10:
+            pitch_sf = 4
+        elif 10 <= pitch < 20:
+            pitch_sf = 10
+        elif 20 <= pitch < 30:
+            pitch_sf = 30
+        elif 30 <= pitch < 40:
+            pitch_sf = 60
+        elif 40 <= pitch:
+            pitch_sf = 100
+        else:
+            pitch_sf = 1
+        #if pitch_sf > 29:
+        #    print("pitch_sf: ", pitch_sf)
+        #    img_tmp = img.copy()
+        #    for x, y in (lands * self.image_size).astype(np.int32):
+        #        cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
+        #    cv2.imwrite("./sample_big_pitch_sf.jpg", img_tmp)
+        #    #import pdb; pdb.set_trace()
+        # yaw(横) is bigger then num is bigger
+        if (-10 <= yaw < -5) or (5 <= yaw < 10):
+            yaw_sf = 2
+        elif (-20 <= yaw < -10) or (10 <= yaw < 20):
+            yaw_sf = 4
+        elif (-30 <= yaw < -20) or (20 <= yaw < 30):
+            yaw_sf = 8
+        elif (-40 <= yaw < -30) or (30 <= yaw < 40):
+            yaw_sf = 16
+        elif (yaw < -40) or (40 < yaw):
+            yaw_sf = 32
+        else:
+            yaw_sf = 1
+        #if yaw_sf > 15:
+        #    print("yaw_sf: ", yaw_sf)
+        #    img_tmp = img.copy()
+        #    for x, y in (lands * self.image_size).astype(np.int32):
+        #        cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
+        #    cv2.imwrite("./sample_big_yaw_sf.jpg", img_tmp)
+        #    #import pdb; pdb.set_trace()
+        sfed_repeat = repeat * (pitch_sf + yaw_sf)
+        #print(pitch_sf)
+        #print(yaw_sf)
+        #print("sfed_repeat: ", sfed_repeat)
+        if sfed_repeat > 1000:
+            #print("big sf: ", sf)
+            sfed_repeat = 1000
+            #print("big sfed_repeat: ", sfed_repeat)
+            #img_tmp = img.copy()
+            #for x, y in (lands * self.image_size).astype(np.int32):
+            #    cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
+            #cv2.imwrite("./sample_big_totalsf.jpg", img_tmp)
+        return sfed_repeat
+
     def load_data(self, is_train, rotate, repeat, mirror=None):
         if (mirror is not None):
             with open(mirror, 'r') as f:
@@ -265,7 +349,10 @@ class ImageDate():
         assert (landmark <= 1).all(), str(landmark) + str([dx, dy])
         self.imgs.append(imgT)
         self.landmarks.append(landmark)
-
+        if is_train:
+            # 学習データに対してはリサイズ
+            repeat = self.cal_hard_rotate_num(imgT, landmark, repeat)
+        #import pdb; pdb.set_trace()
         if rotate == "rotate" and is_train:
             # =========データ拡張=========
             while len(self.imgs) < repeat:
@@ -428,7 +515,7 @@ if __name__ == '__main__':
         print("if you use pcn dataset, add nonrotate")
         exit()
 
-    AUGMENT_NUM = 10
+    AUGMENT_NUM = 2
     print("AUGMENT_NUM: ", AUGMENT_NUM)
 
     root_dir = os.path.dirname(os.path.realpath(__file__))
@@ -474,8 +561,10 @@ if __name__ == '__main__':
     print(image_size)
 
     landmarkDirs = [landmarkTestDir, landmarkTrainDir]
+    #landmarkDirs = [landmarkTrainDir, landmarkTestDir]
 
     outDirs = [outTestDir, outTrainDir]
+    #outDirs = [outTrainDir, outTestDir]
     for landmarkDir, outDir in zip(landmarkDirs, outDirs):
         outDir = os.path.join(root_dir, outDir)
         print(outDir)

@@ -43,7 +43,21 @@ def create_wing_w_map(diff):
 
     return weight_map
 
-def weight_wing_loss(landmarks, labels, w=10.0, epsilon=2.0):
+def create_wing_lip_w_map(diff):
+    # 各画像内において平均誤差より各点誤差が大きい点には重みh、小さい点には重み1で、重みmap作成
+    # import pdb;pdb.set_trace()
+    ave_diff = tf.reduce_mean(diff)
+    hw = tf.constant(3.0)
+    # no lip
+    nolip_ones = tf.ones([48, 2])
+    # lip
+    lip_ones = tf.ones([20, 2])
+    lip_ws = tf.multiply(lip_ones, hw)
+    weight_map = tf.concat([nolip_ones, lip_ws], 0)
+
+    return weight_map
+
+def weight_wing_loss(landmarks, labels, w=10.0, epsilon=2.0, target='all'):
     """
     Arguments:
         landmarks, labels: float tensors with shape [batch_size, num_landmarks, 2].
@@ -54,26 +68,28 @@ def weight_wing_loss(landmarks, labels, w=10.0, epsilon=2.0):
     x = landmarks - labels
     c = w * (1.0 - math.log(1.0 + w/epsilon))
     absolute_x = tf.abs(x)
-    #import pdb;pdb.set_trace()
-    weight_map = tf.vectorized_map(create_wing_w_map, absolute_x)
+    if target == 'all':
+        weight_map = tf.vectorized_map(create_wing_w_map, absolute_x)
+    elif target == 'lip':
+        weight_map = tf.vectorized_map(create_wing_lip_w_map, absolute_x)
     # pre weighted
-    print("=== pre weoght wing loss === ")
-    weight_x = tf.multiply(weight_map, absolute_x)
-    weight_losses = tf.where(
-        tf.greater(w, weight_x),
-        w * tf.log(1.0 + weight_x/epsilon),
-        weight_x - c
-    )
-    # post weighted
-    # print("=== post weight wing loss === ")
-    # losses = tf.where(
-    #     tf.greater(w, absolute_x),
-    #     w * tf.log(1.0 + absolute_x/epsilon),
-    #     absolute_x - c
+    # print("=== pre weoght wing loss === ")
+    # weight_x = tf.multiply(weight_map, absolute_x)
+    # weight_losses = tf.where(
+    #     tf.greater(w, weight_x),
+    #     w * tf.log(1.0 + weight_x/epsilon),
+    #     weight_x - c
     # )
-    # weight_losses = tf.multiply(weight_map, losses)
+    # post weighted
+    print("=== post weight wing loss === ")
+    losses = tf.where(
+        tf.greater(w, absolute_x),
+        w * tf.log(1.0 + absolute_x/epsilon),
+        absolute_x - c
+    )
+    weight_losses = tf.multiply(weight_map, losses)
 
-    return weight_losses, [absolute_x, weight_map, weight_losses]
+    return weight_losses, [absolute_x, losses, weight_map, weight_losses]
 
 def wing_loss(landmarks, labels, w=10.0, epsilon=2.0):
     """
@@ -184,12 +200,27 @@ def main(args):
         # list_ops['train_next_element'] = train_next_element
         list_ops['test_next_element'] = test_next_element
 
-        tf.set_random_seed(args.seed)
-        global_step = tf.Variable(0, trainable=False)
-        list_ops['global_step'] = global_step
-
         epoch_size = num_train_file // args.batch_size
         print('Number of batches per epoch: {}'.format(epoch_size))
+
+        if args.pretrained_model:
+            pretrained_model = args.pretrained_model
+            ckpt = tf.train.get_checkpoint_state(pretrained_model)
+            model_path = ckpt.model_checkpoint_path
+            print("model_path: ", model_path)
+            assert (ckpt and model_path)
+            if args.pretrained_model != args.model_dir:
+                epoch_start = 0
+            else:
+                epoch_start = int(
+                    model_path[model_path.find('model.ckpt-') + 11:]) + 1
+        else:
+            epoch_start = 0
+        now_step = epoch_start * epoch_size
+        print("now_step: ", now_step)
+        tf.set_random_seed(args.seed)
+        global_step = tf.Variable(now_step, trainable=False)
+        list_ops['global_step'] = global_step
 
         # ================== create models ================
         print("=================== create models ===============")
@@ -239,13 +270,13 @@ def main(args):
         _landmark_batch = tf.reshape(landmark_batch, [-1, args.num_labels, 2])
         # import pdb;pdb.set_trace()
         # wing loss
-        print("=== wing loss ===")
-        wing_losses, debug_l = wing_loss(_landmarks_pre, _landmark_batch)
-        losses_sum = tf.reduce_sum(wing_losses, axis=[1, 2])
-        # weight wing loss
-        #print("=== weight wing loss ===")
-        #wing_losses, debug_l = weight_wing_loss(_landmarks_pre, _landmark_batch)
+        #print("=== wing loss ===")
+        #wing_losses, debug_l = wing_loss(_landmarks_pre, _landmark_batch)
         #losses_sum = tf.reduce_sum(wing_losses, axis=[1, 2])
+        # weight wing loss
+        print("=== weight wing loss ===")
+        wing_losses, debug_l = weight_wing_loss(_landmarks_pre, _landmark_batch, target='lip')
+        losses_sum = tf.reduce_sum(wing_losses, axis=[1, 2])
         # weighted loss
         # print("=== weight loss ===")
         # weight_losses, debug_l = weighted_loss(_landmarks_pre, _landmark_batch)
@@ -309,7 +340,7 @@ def main(args):
         tf.summary.scalar('train_loss_l2', train_loss_l2)
 
         save_params = tf.trainable_variables()
-        saver = tf.train.Saver(save_params, max_to_keep=None)
+        saver = tf.train.Saver(save_params, max_to_keep=10)
 
         # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0)
         sess = tf.Session(graph=g, config=tf.ConfigProto(
@@ -326,18 +357,22 @@ def main(args):
             if args.pretrained_model:
                 pretrained_model = args.pretrained_model
                 print("path: ", os.path.isdir(pretrained_model))
-                if (not os.path.isdir(pretrained_model)):
-                    print('Restoring pretrained model: {}'.format(pretrained_model))
-                    saver.restore(sess, args.pretrained_model)
+                # import pdb;pdb.set_trace()
+                print('Restoring pretrained model : {}'.format(pretrained_model))
+                ckpt = tf.train.get_checkpoint_state(pretrained_model)
+                model_path = ckpt.model_checkpoint_path
+                assert (ckpt and model_path)
+                if args.pretrained_model != args.model_dir:
+                    # in stage2 pretrain start
+                    epoch_start = 0
                 else:
-                    print('Model directory: {}'.format(pretrained_model))
-                    ckpt = tf.train.get_checkpoint_state(pretrained_model)
-                    model_path = ckpt.model_checkpoint_path
-                    assert (ckpt and model_path)
                     epoch_start = int(
                         model_path[model_path.find('model.ckpt-') + 11:]) + 1
-                    print('Checkpoint file: {}'.format(model_path))
-                    saver.restore(sess, model_path)
+                print('Checkpoint file: {}'.format(model_path))
+                saver.restore(sess, model_path)
+            else:
+                print("no pretrained")
+                epoch_start = 0
 
             # if args.save_image_example:
             #     save_image_example(sess, list_ops, args)
