@@ -34,7 +34,7 @@ def get_mean_shape(args):
     return mean_shape
 
 def main(args):
-    test_type = "all"
+    test_type = "lip"
     print("============= test_type " + test_type + " =========")
     time.sleep(2)
     print("args: ", args)
@@ -51,6 +51,8 @@ def main(args):
     NRMSE = 0
     landmark_error = 0
     landmark_01_num = 0
+    lip_loss_sum = 0
+    lip_upperloss_sum = 0
 
     with tf.Graph().as_default() as inf_g:
         image_batch = tf.placeholder(tf.float32, shape=(None, args.image_size, args.image_size, 3),
@@ -199,6 +201,9 @@ def main(args):
                     error = np.sqrt(np.sum(error_diff * error_diff))
                     if (test_type == 'lip') and (48 <= count_point):
                         error *= 3
+                        lip_loss_sum += error
+                        if (48 <= count_point <= 54) or (60 <= count_point <= 64):
+                            lip_upperloss_sum += error
                     error_all_points += error
 
                 interocular_distance = np.sqrt(
@@ -217,11 +222,14 @@ def main(args):
             print('Test Loss {:2.3f}'.format(loss))
             #NRMSE = NRMSE / (len(file_list) * 1.0)
             #print('Test NRMSE {:2.3f}'.format(NRMSE))
-
+            if (test_type == 'lip'):
+                lip_loss = lip_loss_sum / (len(file_list) * 1.0)
+                print('Test lip_loss {:2.3f}'.format(lip_loss))
+                lip_upperloss = lip_upperloss_sum / (len(file_list) * 1.0)
+                print('Test lip_upperloss {:2.3f}'.format(lip_upperloss))
             print('mean error and failure rate')
             landmark_error_norm = landmark_error / (len(file_list) * 1.0)
             error_str = 'mean error : {:2.3f}'.format(landmark_error_norm)
-
             failure_rate_norm = landmark_01_num / (len(file_list) * 1.0)
             failure_rate_str = 'failure rate: L1 {:2.3f}'.format(
                 failure_rate_norm)

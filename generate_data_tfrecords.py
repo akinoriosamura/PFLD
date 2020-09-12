@@ -13,7 +13,7 @@ class TfrecordsLoader():
     def __init__(self, file_list, args, phase, model_type, debug=False):
         print("labels; ", args.num_labels)
         time.sleep(3)
-        self.num_records = 10
+        self.num_records = 20
         self.file_list = file_list
         with open(self.file_list, 'r') as f:
             self.lines = f.readlines()
@@ -104,9 +104,12 @@ class TfrecordsLoader():
 
     def write_tfrecord(self, tfrecord_base_path):
         def _parse_data(fname):
-            image = cv2.imread(fname)
-            image = cv2.resize(
-                image, (self.args.image_size, self.args.image_size))
+            try:
+                image = cv2.imread(fname)
+                image = cv2.resize(
+                    image, (self.args.image_size, self.args.image_size))
+            except:
+                import pdb; pdb.set_trace()
             return image
 
         def _normalize(image):

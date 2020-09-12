@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from euler_angles_utils import calculate_pitch_yaw_roll
 import os
+import math
 import numpy as np
 import cv2
 import shutil
@@ -8,6 +9,9 @@ import sys
 import configparser
 
 debug = False
+EX_REPEAT_NUM = 0
+LIPMF_EXPAND = 0
+PITCHRAW_EXPAND = 0
 # debug = True
 
 
@@ -32,17 +36,21 @@ class ImageDate():
     def __init__(self, line, imgDir, num_labels, image_size, dataset):
         self.image_size = image_size
         line = line.strip().split()
-        # with open("mean_face_shape.txt", mode='r') as mf:
-        #     _meanShape = mf.readline()
-        #     _meanShape = _meanShape.split(" ")
-        #     self.mean_face = np.array([float(mf) for mf in _meanShape])
-        #     # 唇両端: 48 - 54
-        #     d_vert_mean_face = np.linalg.norm(self.mean_face[54] - self.mean_face[48])
-        #     # 唇上下: 51 - 57
-        #     d_wide_mean_face = np.linalg.norm(self.mean_face[57] - self.mean_face[51])
-        #     # 縦横比
-        #     import pdb; pdb.set_trace()
-        #     self.aspect_rat_mean_shape = d_wide_mean_face / d_vert_mean_face
+        with open("mean_face_shape.txt", mode='r') as mf:
+            _meanShape = mf.readline()
+            _meanShape = _meanShape.split(" ")
+            self.mean_face = np.array([float(mf) for mf in _meanShape])
+            # 唇両端: 48 - 54
+            d_wide_mean_face = np.linalg.norm(self.mean_face[54] - self.mean_face[48])
+            # 唇上下: 51 - 57
+            d_vert_mean_face = np.linalg.norm(self.mean_face[57] - self.mean_face[51])
+            # 縦横比
+            self.aspect_rat_mean_shape = d_wide_mean_face / d_vert_mean_face
+            # 上唇の大きさ: 51 - 62
+            self.d_ulip_mean_face = np.linalg.norm(self.mean_face[62] - self.mean_face[51])
+            # 下唇の大きさ: 57 - 66
+            self.d_blip_mean_face = np.linalg.norm(self.mean_face[57] - self.mean_face[66])
+            # import pdb; pdb.set_trace()
         """
         num_labels = 98
         #0-195: landmark 坐标点  196-199: bbox 坐标点;
@@ -214,13 +222,59 @@ class ImageDate():
         cv2.imwrite("./setprepa_sam_label.jpg", img)
 
     def cal_hard_rotate_num(self, img, lands, repeat):
+        """
+        # 唇augは精度向上しない
         # 縦横比で比較
+        lipmf_alpha = 30
         # 唇両端: 48 - 54
-        # d_vert = np.linalg.norm(lands[54] - lands[48])
-        # # 唇上下: 51 - 57
-        # d_wide = np.linalg.norm(lands[57] - lands[51])
-        # import pdb; pdb.set_trace()
-        # aspect_rat = d_wide / d_vert
+        d_wide = np.linalg.norm(lands[54] - lands[48])
+        # 唇上下: 51 - 57
+        d_vert = np.linalg.norm(lands[57] - lands[51])
+        aspect_rat = d_wide / d_vert
+        img_tmp = img.copy()
+        cv2.imwrite("./sample_lipaspect.jpg", img_tmp)
+        if (aspect_rat == 0) or (self.aspect_rat_mean_shape == 0):
+            aspect_expand = 100
+        elif aspect_rat >= self.aspect_rat_mean_shape:
+            aspect_expand = aspect_rat / self.aspect_rat_mean_shape
+        elif aspect_rat < self.aspect_rat_mean_shape:
+            aspect_expand = self.aspect_rat_mean_shape / aspect_rat
+        #print("aspect_expand: ", aspect_expand)
+        aspect_expand = (aspect_expand) ** 2
+        #print("aspect_expand: ", aspect_expand)
+        # 上唇の大きさ: 51 - 62
+        d_ulip = np.linalg.norm(lands[62] - lands[51])
+        if (d_ulip == 0) or (self.d_ulip_mean_face == 0):
+            ulip_expand = 100
+        elif d_ulip >= self.d_ulip_mean_face:
+            ulip_expand = d_ulip / self.d_ulip_mean_face
+        elif d_ulip < self.d_ulip_mean_face:
+            ulip_expand = self.d_ulip_mean_face / d_ulip
+        #print("ulip_expand: ", ulip_expand)
+        ulip_expand = (ulip_expand) ** 2
+        #print("ulip_expand: ", ulip_expand)
+        # 下唇の大きさ: 57 - 66
+        d_blip = np.linalg.norm(lands[57] - lands[66])
+        if (d_blip == 0) or (self.d_blip_mean_face == 0):
+            blip_expand = 100
+        elif d_blip >= self.d_blip_mean_face:
+            blip_expand = d_blip / self.d_blip_mean_face
+        elif d_blip < self.d_blip_mean_face:
+            blip_expand = self.d_blip_mean_face / d_blip
+        #print("blip_expand: ", blip_expand)
+        blip_expand = (blip_expand) ** 2
+        #print("blip_expand: ", blip_expand)
+        expand_rat = int((aspect_expand + ulip_expand + blip_expand) / lipmf_alpha)
+        if expand_rat > 100:
+            print("expand_rat: ", expand_rat)
+            expand_rat = 100
+        # sfed_repeat = repeat * expand_rat
+        global LIPMF_EXPAND
+        lipmf_expand = repeat * expand_rat
+        LIPMF_EXPAND += lipmf_expand
+        #print("sfed_repeat: ", sfed_repeat)
+        #import pdb; pdb.set_trace()
+        """
 
         # tracked pointsからpitch yaw rollを計算し保存
         euler_angles_landmark = []
@@ -236,13 +290,13 @@ class ImageDate():
         if 5 <= pitch < 10:
             pitch_sf = 4
         elif 10 <= pitch < 20:
-            pitch_sf = 10
+            pitch_sf = 16
         elif 20 <= pitch < 30:
-            pitch_sf = 30
+            pitch_sf = 48
         elif 30 <= pitch < 40:
-            pitch_sf = 60
-        elif 40 <= pitch:
             pitch_sf = 100
+        elif 40 <= pitch:
+            pitch_sf = 300
         else:
             pitch_sf = 1
         #if pitch_sf > 29:
@@ -273,17 +327,26 @@ class ImageDate():
         #    cv2.imwrite("./sample_big_yaw_sf.jpg", img_tmp)
         #    #import pdb; pdb.set_trace()
         sfed_repeat = repeat * (pitch_sf + yaw_sf)
+
         #print(pitch_sf)
         #print(yaw_sf)
         #print("sfed_repeat: ", sfed_repeat)
-        if sfed_repeat > 1000:
-            #print("big sf: ", sf)
-            sfed_repeat = 1000
-            #print("big sfed_repeat: ", sfed_repeat)
-            #img_tmp = img.copy()
-            #for x, y in (lands * self.image_size).astype(np.int32):
-            #    cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
-            #cv2.imwrite("./sample_big_totalsf.jpg", img_tmp)
+        #if sfed_repeat > 300:
+        #    print("big sf: ", sf)
+        #    sfed_repeat = 300
+        #    #print("big sfed_repeat: ", sfed_repeat)
+        #    #img_tmp = img.copy()
+        #    #for x, y in (lands * self.image_size).astype(np.int32):
+        #    #    cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
+        #    #cv2.imwrite("./sample_big_totalsf.jpg", img_tmp)
+        # global PITCHRAW_EXPAND
+        # pitchraw_expand = repeat * (pitch_sf + yaw_sf)
+        # PITCHRAW_EXPAND += pitchraw_expand
+        # sfed_repeat = int((lipmf_expand + 2 * pitchraw_expand) / 3)
+
+        global EX_REPEAT_NUM
+        EX_REPEAT_NUM += sfed_repeat
+
         return sfed_repeat
 
     def load_data(self, is_train, rotate, repeat, mirror=None):
@@ -474,6 +537,12 @@ def get_dataset_list(imgDir, outDir, landmarkDir, is_train, rotate, num_labels, 
             labels.append(label_txt)
             if ((i + 1) % 100) == 0:
                 print('file: {}/{}'.format(i + 1, len(lines)))
+                global LIPMF_EXPAND
+                print("LIPMF_EXPAND: ", LIPMF_EXPAND)
+                global PITCHRAW_EXPAND
+                print("PITCHRAW_EXPAND: ", PITCHRAW_EXPAND)
+                global EX_REPEAT_NUM
+                print("EX_REPEAT_NUM: ", EX_REPEAT_NUM)
 
     with open(os.path.join(outDir, 'list.txt'), 'w') as f:
         for label in labels:
@@ -515,7 +584,7 @@ if __name__ == '__main__':
         print("if you use pcn dataset, add nonrotate")
         exit()
 
-    AUGMENT_NUM = 2
+    AUGMENT_NUM = 1
     print("AUGMENT_NUM: ", AUGMENT_NUM)
 
     root_dir = os.path.dirname(os.path.realpath(__file__))
@@ -560,11 +629,11 @@ if __name__ == '__main__':
     print(outTestDir)
     print(image_size)
 
-    landmarkDirs = [landmarkTestDir, landmarkTrainDir]
-    #landmarkDirs = [landmarkTrainDir, landmarkTestDir]
+    #landmarkDirs = [landmarkTestDir, landmarkTrainDir]
+    landmarkDirs = [landmarkTrainDir, landmarkTestDir]
 
-    outDirs = [outTestDir, outTrainDir]
-    #outDirs = [outTrainDir, outTestDir]
+    #outDirs = [outTestDir, outTrainDir]
+    outDirs = [outTrainDir, outTestDir]
     for landmarkDir, outDir in zip(landmarkDirs, outDirs):
         outDir = os.path.join(root_dir, outDir)
         print(outDir)
