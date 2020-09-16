@@ -349,7 +349,7 @@ class ImageDate():
 
         return sfed_repeat
 
-    def load_data(self, is_train, rotate, repeat, mirror=None):
+    def load_data(self, is_train, rotate, rotate_type, repeat, mirror=None):
         if (mirror is not None):
             with open(mirror, 'r') as f:
                 lines = f.readlines()
@@ -412,11 +412,12 @@ class ImageDate():
         assert (landmark <= 1).all(), str(landmark) + str([dx, dy])
         self.imgs.append(imgT)
         self.landmarks.append(landmark)
-        if is_train:
-            # 学習データに対してはリサイズ
-            repeat = self.cal_hard_rotate_num(imgT, landmark, repeat)
-        #import pdb; pdb.set_trace()
+
         if rotate == "rotate" and is_train:
+            if rotate_type == 'hard':
+                # 学習データに対してはリサイズ
+                repeat = self.cal_hard_rotate_num(imgT, landmark, repeat)
+                # print("repeat: ", repeat)
             # =========データ拡張=========
             while len(self.imgs) < repeat:
                 angle = np.random.randint(-20, 20)
@@ -517,7 +518,7 @@ class ImageDate():
         return labels
 
 
-def get_dataset_list(imgDir, outDir, landmarkDir, is_train, rotate, num_labels, image_size, dataset, AUGMENT_NUM):
+def get_dataset_list(imgDir, outDir, landmarkDir, is_train, rotate, rotate_type, num_labels, image_size, dataset, AUGMENT_NUM):
     with open(landmarkDir, 'r') as f:
         lines = f.readlines()
         labels = []
@@ -530,19 +531,20 @@ def get_dataset_list(imgDir, outDir, landmarkDir, is_train, rotate, num_labels, 
         for i, line in enumerate(lines):
             Img = ImageDate(line, imgDir, num_labels, image_size, dataset)
             img_name = Img.path
-            Img.load_data(is_train, rotate, AUGMENT_NUM, Mirror_file)
+            Img.load_data(is_train, rotate, rotate_type, AUGMENT_NUM, Mirror_file)
             _, filename = os.path.split(img_name)
             filename, _ = os.path.splitext(filename)
             label_txt = Img.save_data(save_img, str(i) + '_' + filename)
             labels.append(label_txt)
             if ((i + 1) % 100) == 0:
                 print('file: {}/{}'.format(i + 1, len(lines)))
-                global LIPMF_EXPAND
-                print("LIPMF_EXPAND: ", LIPMF_EXPAND)
-                global PITCHRAW_EXPAND
-                print("PITCHRAW_EXPAND: ", PITCHRAW_EXPAND)
-                global EX_REPEAT_NUM
-                print("EX_REPEAT_NUM: ", EX_REPEAT_NUM)
+                if is_train:
+                    global LIPMF_EXPAND
+                    print("LIPMF_EXPAND: ", LIPMF_EXPAND)
+                    global PITCHRAW_EXPAND
+                    print("PITCHRAW_EXPAND: ", PITCHRAW_EXPAND)
+                    global EX_REPEAT_NUM
+                    print("EX_REPEAT_NUM: ", EX_REPEAT_NUM)
 
     with open(os.path.join(outDir, 'list.txt'), 'w') as f:
         for label in labels:
@@ -575,16 +577,17 @@ if __name__ == '__main__':
     """
 
     # ex: python SetPreparation.py WFLW 98
-    if len(sys.argv) == 4:
+    if len(sys.argv) == 5:
         dataset = sys.argv[1]
         num_labels = sys.argv[2]
         rotate = sys.argv[3]
+        rotate_type = sys.argv[4]
     else:
-        print("please set arg(dataset_name num_labels rotate) ex: python SetPreparation.py pcnWFLW 68 nonrotate")
-        print("if you use pcn dataset, add nonrotate")
+        print("please set arg(dataset_name num_labels rotate) ex: python SetPreparation.py pcnWFLW 68 rotate, hard")
+        print("if you use pcn dataset, add nonrotate and rotatetype")
         exit()
 
-    AUGMENT_NUM = 1
+    AUGMENT_NUM = 2
     print("AUGMENT_NUM: ", AUGMENT_NUM)
 
     root_dir = os.path.dirname(os.path.realpath(__file__))
@@ -609,9 +612,14 @@ if __name__ == '__main__':
     outTestDirPath = os.path.dirname(outTestPath)
     outTestDir = os.path.basename(outTestPath)
     if rotate == "rotate":
-        print("rotate")
-        outTrainDir = "rotated_" + outTrainDir
-        outTestDir = "rotated_" + outTestDir
+        if rotate_type == "hard":
+            print("hard rotate")
+            outTrainDir = "hardrotated_" + outTrainDir
+            outTestDir = "hardrotated_" + outTestDir
+        else:
+            print("rotate")
+            outTrainDir = "rotated_" + outTrainDir
+            outTestDir = "rotated_" + outTestDir
     else:
         print("non rotate")
         outTrainDir = "non_rotated_" + outTrainDir
@@ -644,6 +652,6 @@ if __name__ == '__main__':
             is_train = False
         else:
             is_train = True
-        imgs = get_dataset_list(imageDirs, outDir, landmarkDir, is_train, rotate, int(
+        imgs = get_dataset_list(imageDirs, outDir, landmarkDir, is_train, rotate, rotate_type, int(
             num_labels), image_size, dataset, AUGMENT_NUM)
     print('end')

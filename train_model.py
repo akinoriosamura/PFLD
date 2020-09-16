@@ -340,7 +340,7 @@ def main(args):
         tf.summary.scalar('train_loss_l2', train_loss_l2)
 
         save_params = tf.trainable_variables()
-        saver = tf.train.Saver(save_params, max_to_keep=10)
+        saver = tf.train.Saver(save_params, max_to_keep=5)
 
         # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0)
         sess = tf.Session(graph=g, config=tf.ConfigProto(
