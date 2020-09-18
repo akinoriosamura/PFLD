@@ -222,7 +222,6 @@ class ImageDate():
         cv2.imwrite("./setprepa_sam_label.jpg", img)
 
     def cal_hard_rotate_num(self, img, lands, repeat):
-        """
         # 唇augは精度向上しない
         # 縦横比で比較
         lipmf_alpha = 30
@@ -269,12 +268,12 @@ class ImageDate():
             print("expand_rat: ", expand_rat)
             expand_rat = 100
         # sfed_repeat = repeat * expand_rat
+
         global LIPMF_EXPAND
         lipmf_expand = repeat * expand_rat
         LIPMF_EXPAND += lipmf_expand
         #print("sfed_repeat: ", sfed_repeat)
         #import pdb; pdb.set_trace()
-        """
 
         # tracked pointsからpitch yaw rollを計算し保存
         euler_angles_landmark = []
@@ -326,8 +325,7 @@ class ImageDate():
         #        cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
         #    cv2.imwrite("./sample_big_yaw_sf.jpg", img_tmp)
         #    #import pdb; pdb.set_trace()
-        sfed_repeat = repeat * (pitch_sf + yaw_sf)
-
+        # sfed_repeat = repeat * (pitch_sf + yaw_sf)
         #print(pitch_sf)
         #print(yaw_sf)
         #print("sfed_repeat: ", sfed_repeat)
@@ -339,12 +337,16 @@ class ImageDate():
         #    #for x, y in (lands * self.image_size).astype(np.int32):
         #    #    cv2.circle(img_tmp, (x, y), 1, (255, 0, 0))
         #    #cv2.imwrite("./sample_big_totalsf.jpg", img_tmp)
-        # global PITCHRAW_EXPAND
-        # pitchraw_expand = repeat * (pitch_sf + yaw_sf)
-        # PITCHRAW_EXPAND += pitchraw_expand
-        # sfed_repeat = int((lipmf_expand + 2 * pitchraw_expand) / 3)
+
+        global PITCHRAW_EXPAND
+        pitchraw_expand = repeat * (pitch_sf + yaw_sf)
+        PITCHRAW_EXPAND += pitchraw_expand
 
         global EX_REPEAT_NUM
+        sfed_repeat = int((lipmf_expand * pitchraw_expand) / 2)
+        if sfed_repeat > 300:
+            print("big sf: ", sf)
+            sfed_repeat = 300
         EX_REPEAT_NUM += sfed_repeat
 
         return sfed_repeat
@@ -587,7 +589,7 @@ if __name__ == '__main__':
         print("if you use pcn dataset, add nonrotate and rotatetype")
         exit()
 
-    AUGMENT_NUM = 2
+    AUGMENT_NUM = 1
     print("AUGMENT_NUM: ", AUGMENT_NUM)
 
     root_dir = os.path.dirname(os.path.realpath(__file__))
