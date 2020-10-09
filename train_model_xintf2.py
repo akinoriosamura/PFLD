@@ -8,9 +8,7 @@ import time
 import gc
 import sys
 import os
-# from XinNing2020_tf2 import XinNingNetwork
-from pfld_tf2 import PFLDBackbone
-from pfld_tf2 import PFLDAuxiliary
+from XinNing2020_tf2 import XinNingNetwork
 import tensorflow as tf
 from generate_data_tfrecords_tf2 import TfrecordsLoader
 from tensorflow.keras.layers import Input
@@ -77,25 +75,25 @@ def main(args):
 
     # ================== create models ================
     print("=================== create models ===============")
-    # model = XinNingNetwork(args.num_labels, args.image_size, mean_shape, train_stage)
-    model = PFLDBackbone(args.num_labels, args.image_size, args.depth_multi)
-    _in_shape = [args.image_size, args.image_size, 3]
-    print("features3 will be: ")
-    print(((args.image_size /2) - 2) / 2)
-    print(64 * args.depth_multi)
-    model.build(input_shape=(None,_in_shape[0],_in_shape[1],_in_shape[2])) # , training=True) 
-    model.summary()
-    aux_model = PFLDAuxiliary(args.num_labels, args.image_size, args.depth_multi)
-    aux_in_w = int(((args.image_size /2) - 2) / 2)
-    aux_in_a = int(64 * args.depth_multi)
-    aux_model.build(input_shape=(None, aux_in_w, aux_in_w, aux_in_a)) # , training=True) 
-    aux_model.summary()
+    model = XinNingNetwork(args.num_labels, args.image_size, mean_shape, train_stage)
     # import pdb;pdb.set_trace()
+    if 'gray' in args.tfrecords_dir:
+        _in_shape = [args.image_size, args.image_size, 1]
+    else:
+        _in_shape = [args.image_size, args.image_size, 3]
     print("_in_shape: ", _in_shape)
-    #get_model_summary(model, aux_model, _in_shape)
+    get_model_summary(model, _in_shape)
 
-    def loss_objects(landmarks_pre, euler_angles_pre, targets, L2_losses):
+    def loss_objects(outputs, targets, L2_losses):
         debug_list = []
+        debug_list.append(outputs[0])
+        # landmarks_pre = outputs[0]
+        landmarks_pre = tf.add(tf.cast(mean_shape, dtype=tf.float32), outputs[0])
+        if train_stage == 'stage2':
+            debug_list.append(landmarks_pre)
+            debug_list.append(outputs[1])
+            landmarks_pre = tf.add(landmarks_pre, outputs[1])
+            # landmarks_pre = outputs[1]
         debug_list.append(landmarks_pre)
 
         landmark_batch, euler_batch = targets[0], targets[1]
@@ -107,7 +105,7 @@ def main(args):
         # attributes_w_n = tf.reduce_sum(attributes_w_n, axis=1)
 
         L2_loss = tf.add_n(L2_losses)
-        _sum_k = tf.reduce_sum(tf.map_fn(lambda x: 1 - tf.cos(abs(x)), euler_batch - euler_angles_pre), axis=1)
+        # _sum_k = tf.reduce_sum(tf.map_fn(lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
         # default loss
         # print("=== default loss ===")
         # loss_sum = tf.reduce_sum(tf.square(landmark_batch - landmarks_pre), axis=1)
@@ -119,7 +117,7 @@ def main(args):
         wing_losses, debug_l = wing_loss(_landmarks_pre, _landmark_batch)
         loss_sum = tf.reduce_sum(wing_losses, axis=[1, 2])
         # summarize
-        loss_sum = tf.reduce_mean(loss_sum * _sum_k)#  * attributes_w_n)
+        loss_sum = tf.reduce_mean(loss_sum)  # * _sum_k)#  * attributes_w_n)
         loss_sum += L2_loss
         debug_list.append(landmark_batch - landmarks_pre)
         debug_list.append(tf.square(landmark_batch - landmarks_pre))
@@ -140,13 +138,12 @@ def main(args):
     @tf.function
     def train_step(inputs, targets):
         with tf.GradientTape() as tape:
-            features, landmarks = model(inputs, training=True)
-            euler_angles_pre = aux_model(features, training=True)
-            loss_value, L2_loss, debug_list = loss_objects(landmarks, euler_angles_pre, targets, model.losses)
+            outputs, heats = model(inputs, training=True)
+            loss_value, L2_loss, debug_list = loss_objects(outputs, targets, model.losses)
 
         gradients = tape.gradient(loss_value, model.trainable_variables)
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-        return loss_value, L2_loss, debug_list
+        return heats, loss_value, L2_loss, debug_list, outputs
 
     # ============ resotre pretrain =============
     print("================= resotre pretrain if exist =================")
@@ -203,9 +200,10 @@ def main(args):
             for batch_i, (image_batch, landmarks_batch, _, euler_batch) in enumerate(batch_train_dataset):
                 # start = time.time()
                 # import pdb; pdb.set_trace()
-                losses, L2_loss, debug_list = train_step(
+                heats, losses, L2_loss, debug_list, outputs = train_step(
                     image_batch, [landmarks_batch, euler_batch])
                 # print("trainable v num: ", len(model.trainable_variables))
+                # outputs = model.fit(image_batch)
                 # print("elapsed: ", time.time() - start)
                 if ((batch_i + 1) % 10) == 0 or (batch_i + 1) == epoch_size:
                     Epoch = 'Epoch:[{:<4}][{:<4}/{:<4}][{:<4}/{:<4}]'.format(
@@ -217,6 +215,20 @@ def main(args):
                         Epoch, Loss, optimizer.learning_rate))
                     # save sample image
                     # import pdb;pdb.set_trace()
+                    _sample_img = image_batch[0].numpy() * 127.5 + 127.5
+                    _sampel_heatmap = 256 * np.concatenate([heats[1][0].numpy(), heats[1][0].numpy(), heats[1][0].numpy()], axis=2)
+                    cv2.imwrite("./test_heatmap.jpg", (_sample_img + _sampel_heatmap))
+                    _sample_stage1_land = debug_list[1][0].numpy().reshape(-1, 2) * 112
+                    for (x, y) in _sample_stage1_land.astype(np.int32):
+                        cv2.circle(_sample_img, (x, y), 1, (0, 255, 0), 1)
+                    cv2.imwrite("./test_land.jpg", _sample_img)
+                    if train_stage == 'stage2':
+                        _sample_img_2 = (image_batch[0].numpy() * 127.5 + 127.5).copy()
+                        _sample_stage2_land = debug_list[3][0].numpy().reshape(-1, 2) * 112
+                        for (x, y) in _sample_stage2_land.astype(np.int32):
+                            cv2.circle(_sample_img_2, (x, y), 1, (0, 255, 0), 1)
+                        cv2.imwrite("./test_land2.jpg", _sample_img_2)
+                    #import pdb;pdb.set_trace()
 
                 batch_num += 1
                 all_step += 1
@@ -318,7 +330,7 @@ def test(batch_test_dataset, num_test_file, model, args, mean_shape, train_stage
     print(error_str + '\n' + failure_rate_str + '\n')
 
 # @tf.function
-def get_model_summary(model, aux_model, in_shape):
+def get_model_summary(model, in_shape):
     # 「仮のモデル」をFunctional APIで生成する独自関数
     def get_functional_model(_model, in_shape):
         x = Input(shape=(112, 112, 3), name='layer_in')
