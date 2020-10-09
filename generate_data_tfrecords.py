@@ -13,7 +13,7 @@ class TfrecordsLoader():
     def __init__(self, file_list, args, phase, model_type, debug=False):
         print("labels; ", args.num_labels)
         time.sleep(3)
-        self.num_records = 20
+        self.num_records = 2
         self.file_list = file_list
         with open(self.file_list, 'r') as f:
             self.lines = f.readlines()

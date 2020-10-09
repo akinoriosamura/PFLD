@@ -345,7 +345,9 @@ class ImageDate():
         global EX_REPEAT_NUM
         sfed_repeat = int((lipmf_expand * pitchraw_expand) / 2)
         if sfed_repeat > 300:
-            print("big sf: ", sf)
+            print("big lipmf_expand: ", lipmf_expand)
+            print("big pitchraw_expand: ", pitchraw_expand)
+            print("big sfed_repeat: ", sfed_repeat)
             sfed_repeat = 300
         EX_REPEAT_NUM += sfed_repeat
 
