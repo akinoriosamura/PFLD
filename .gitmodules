@@ -1,0 +1,3 @@
+[submodule "FaceKit"]
+	path = FaceKit
+	url = git@github.com:akinoriosamura/FaceKit.git

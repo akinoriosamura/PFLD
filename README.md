@@ -8,93 +8,76 @@
  - get `model.meta` and set in `models2/models/`  
  [Google drive](https://drive.google.com/open?id=1Ol-JWNS3bVTD3hV6aIbTm6cNzGOWiw2U)  
 
-## If use GPU
+## prepare env
   - install docker and docker-compose
   ```
-  docker-compose up -d
-  docker attach tensorflow-gpu-1-14
+  docker-compose -f docker-compose.yml up -d
+  docker attach [container name]
   ```
- 
-## create pipenv 
- - install pipenv  
+  - install
+  ```
+  pip install -r requirement.txt
+  ```
 
- - install library and shell  
- ```
- pipenv install
- pipenv shell
- ```
+if you use pfld tensorflow 2 ver, you change above script like `docker-compose.yml` to `docker-compose2.yml` and `requirement.txt` to `requirement2.txt`.
 
-## preprocess WFLW
+## preprocess dataset
 ```
-cp euler_angles_utils.py ./data/
 cd data
-python SetPreparation.py WFLW [label num]
+```
+ - set dataset config
+ add processing dataset's config to `preparate_config.ini`.
+ ```ex
+ [`datasetname`_`label_num`]
+ imageDirs = ./growing/growing_20180601
+ Mirror_file = ./Mirror68.txt
+ landmarkTrainDir = ./growing/traindata8979_20180601_train.txt
+ landmarkTestDir = ./growing/traindata8979_20180601_test.txt
+ landmarkTestName = traindata8979_20180601_test.txt
+ outTrainDir = train_growing52_data
+ outTestDir = test_growing52_data
+ ImageSize = 112
+ ```
+ - set augment scale
+ update AUGMENT_NUM in `SetPreparation.py`
+ - run
+ ```
+ python SetPreparation.py `datasetname` `label_num` `rotate or nonrotate` `hard aug or nothard aug`
+ ```
+ ```ex
+ python SetPreparation.py pcnWFLW 68 rotate hard
+ ```
+then, you can get train and test dataset
+
+## run
+### some model types
+We have some model types and each model has each `run.sh` script.
+ - `run.sh` is for `pfld`
+ - `run_tf2.sh` is for `pfld tf ver2`
+ - `run_tfjs.sh` is for `face api model`
+ - `run_xin.sh` is for `xining model`
+
+and below README explain for `run.sh`
+
+### change settings
+update `run.sh` and change dataset path and model path and so on settings.
+
+### train
+```
+sh run.sh train
 ```
 
-## train
+### pretrain
 ```
-sh train.sh
-```
-
-## test
-```
-python test_model.py
+sh run.sh pretrain
 ```
 
-## camera test
+### test
 ```
-python camera.py
-```
-
-## Run by CPU ex
-```
-CUDA_VISIBLE_DEVICES= python test_model.py
+sh run.sh test
 ```
 
-## save model
-### to saved_model and pb file
- - fix save.sh file  
- - run `save.sh`
-
-### to tflite file
- - from pb
+### save tflite
 ```
-tflite_convert --output_file=[tflite path] --graph_def_file=[pb file path] --input_arrays=image_batch --output_arrays=pfld_inference/fc/BiasAdd --allow_custom_ops --enable_select_tf_ops
+sh run.sh save
 ```
-
- - from SavedModel
-```
-fix convert_tflite.py
-python convert_tflite.py
-```
-
-
-## original README
-Table 1:  
-  The code for cauculating euler angles prediction loss have been released.
-
-Table 2:     
-  I`ve done the job and fixed the memory leak bug:
-  The code has a flaw that i calculate euler angles ground-truth while training process,so the training speed have slowed down because  some work have to be finished on the cpu ,you should calculate the euler angles in the preprocess code    
-      
-Table 3：It is an open surce program reference to https://arxiv.org/pdf/1902.10859.pdf , if you find any bugs or anything incorrect,you can notice it in the issues and pull request,be glad to receive you advices.     
-And thanks @lucknote for helping fixing existing bugs.
-  
-EASY TO TRAIN:
->STEP1:data/SetPreparation.py  
->STEP2:train.sh
-  
-  
-SAMPLE IMGS:  
-
- ![Image text](https://github.com/guoqiangqi/PFLD/blob/master/data/sample_imgs/10.jpg)
- ![Image text](https://github.com/guoqiangqi/PFLD/blob/master/data/sample_imgs/121.jpg)
- ![Image text](https://github.com/guoqiangqi/PFLD/blob/master/data/sample_imgs/17.jpg)
- ![Image text](https://github.com/guoqiangqi/PFLD/blob/master/data/sample_imgs/19.jpg)
- ![Image text](https://github.com/guoqiangqi/PFLD/blob/master/data/sample_imgs/21.jpg)
- ![Image text](https://github.com/guoqiangqi/PFLD/blob/master/data/sample_imgs/52.jpg)
- ![Image text](https://github.com/guoqiangqi/PFLD/blob/master/data/sample_imgs/7.jpg)
-        
- SAMPLE VIDEO:  
-
- ![Image text](data/sample_imgs/ucgif_20190809185908.gif)

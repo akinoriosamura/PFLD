@@ -10,6 +10,7 @@ import numpy as np
 import cv2
 from mtcnn.detect_face import MTCNN
 
+
 def main():
     meta_file = './models2/models/model.meta'
     ckpt_file = './models2/models/model.ckpt-195'
@@ -36,8 +37,9 @@ def main():
             mtcnn = MTCNN()
             while True:
                 ret, image = cap.read()
-                height, width,_ =image.shape
-                if not ret: break
+                height, width, _ = image.shape
+                if not ret:
+                    break
                 boxes = mtcnn.predict(image)
                 for box in boxes:
                     score = box[4]
@@ -65,7 +67,8 @@ def main():
 
                     cropped = image[y1:y2, x1:x2]
                     if (dx > 0 or dy > 0 or edx > 0 or edy > 0):
-                        cropped = cv2.copyMakeBorder(cropped, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
+                        cropped = cv2.copyMakeBorder(
+                            cropped, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
                     cropped = cv2.resize(cropped, (image_size, image_size))
 
                     input = cv2.resize(cropped, (image_size, image_size))
@@ -77,7 +80,7 @@ def main():
                         images_placeholder: input,
                         phase_train_placeholder: False
                     }
-                    cv2.rectangle(image, (x1, y1), (x2, y2), (0,255,0))
+                    cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0))
                     pre_landmarks = sess.run(landmarks, feed_dict=feed_dict)
                     pre_landmark = pre_landmarks[0]
 
@@ -87,6 +90,7 @@ def main():
                 cv2.imshow('0', image)
                 if cv2.waitKey(10) == 27:
                     break
+
 
 if __name__ == '__main__':
     main()

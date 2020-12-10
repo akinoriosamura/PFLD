@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-num_labels=98
+num_labels=68
 depth_multi=1 # default = 1, like model complicated
-save_model=./models2/save_models/98/1107
-pre_model=./models2/trained_models/WFLW_98/1004
+save_model=./models2/save_models/pcn_growing_68/1113
+pre_model=./models2/save_models/pcn_growing_68/1113
 lr=0.000000001
 
 # --pretrained_model=${pre_model} \
 # CUDA_VISIBLE_DEVICES='' \
+export TF_XLA_FLAGS=--tf_xla_cpu_global_jit
+export XLA_FLAGS=--xla_hlo_profile
 python -u save_model.py --model_dir=${save_model} \
                          --pretrained_model=${pre_model} \
                          --num_labels=${num_labels} \
