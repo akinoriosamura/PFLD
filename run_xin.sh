@@ -65,7 +65,7 @@ elif [ ${phase} = "save" ]; then
 
 elif [ "${phase}" = 'test' ]; then
     echo "run test"
-    python -u test_model_tf2.py --pretrained_model=${pre_model} \
+    python -u test_model_xintf2.py --pretrained_model=${pre_model} \
                             --file_list=${file_list} \
                             --test_list=${test_list} \
                             --num_labels=${num_labels} \

@@ -10,9 +10,9 @@ services:
     container_name: pfld-tf-gpu-2
     volumes:
       - ./:/usr/src/app
-    #   - /data:/data
-    #runtime: nvidia
+      - /data:/data
+    runtime: nvidia
     ports:
       - 10000:10000
-    # environment:
-    #   - NVIDIA_VISIBLE_DEVICES=all
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all

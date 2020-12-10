@@ -8,8 +8,7 @@ import time
 import gc
 import sys
 import os
-from pfld_tf2 import PFLDBackbone
-from pfld_tf2 import PFLDAuxiliary
+from XinNing2020_tf2 import XinNingNetwork
 import tensorflow as tf
 from generate_data_tfrecords_tf2 import TfrecordsLoader
 from tensorflow.keras.layers import Input
@@ -19,6 +18,9 @@ tf.keras.backend.set_floatx('float32')
 
 
 def main(args):
+    train_stage = 'stage1'
+    print("============= this phase is : ", train_stage)
+
     print("args: ", args)
     np.random.seed(args.seed)
     time.sleep(3)
@@ -32,8 +34,8 @@ def main(args):
     # ============== get dataset ==============
     # use tfrecord
     print("============== get dataloader ==============")
-    train_loader = TfrecordsLoader(args.file_list, args, "train", "pfld")
-    test_loader = TfrecordsLoader(args.test_list, args, "test", "pfld")
+    train_loader = TfrecordsLoader(args.file_list, args, "train", "xin")
+    test_loader = TfrecordsLoader(args.test_list, args, "test", "xin")
     print("============ get tfrecord train data ===============")
     train_loader.create_tfrecord()
     num_train_file = train_loader.num_file
@@ -52,18 +54,8 @@ def main(args):
 
     # ================== create models ================
     print("=================== create models ===============")
-    model = PFLDBackbone(args.num_labels, args.image_size, args.depth_multi)
-    _in_shape = [args.image_size, args.image_size, 3]
-    print("features3 will be: ")
-    print(((args.image_size /2) - 2) / 2)
-    print(64 * args.depth_multi)
-    model.build(input_shape=(None,_in_shape[0],_in_shape[1],_in_shape[2])) # , training=True) 
-    model.summary()
-    aux_model = PFLDAuxiliary(args.num_labels, args.image_size, args.depth_multi)
-    aux_in_w = int(((args.image_size /2) - 2) / 2)
-    aux_in_a = int(64 * args.depth_multi)
-    aux_model.build(input_shape=(None, aux_in_w, aux_in_w, aux_in_a)) # , training=True) 
-    aux_model.summary()
+    model = XinNingNetwork(args.num_labels, args.image_size, mean_shape, train_stage)
+    # import pdb;pdb.set_trace()
     # get_model_summary(model, [args.image_size, args.image_size, 3])
     boundaries = [
         int(bound) * epoch_size for bound in args.lr_epoch.split(',')]
@@ -85,14 +77,14 @@ def main(args):
 
     # import pdb;pdb.set_trace()
     print("test start")
-    test(batch_test_dataset, num_test_file, model, args, mean_shape)
+    test(batch_test_dataset, num_test_file, model, args, mean_shape, train_stage)
 
 
 @tf.function
 def test_step(model, image_batch):
-    return model(image_batch, training=False)
+    return model(image_batch, training=False)[0]
 
-def test(batch_test_dataset, num_test_file, model, args, mean_shape):
+def test(batch_test_dataset, num_test_file, model, args, mean_shape, train_stage):
     loss_sum = 0
     _NRMSE = 0
     landmark_error = 0
@@ -104,9 +96,13 @@ def test(batch_test_dataset, num_test_file, model, args, mean_shape):
     print("test epoch size: ", epoch_size)
     for i, (image_batch, landmarks_batch, attribute_batch, euler_batch) in enumerate(batch_test_dataset):  # batch_num
         print("start epoch: ", i)
-        _, landmarks_pre_tensor  = test_step(model, image_batch)
-        import pdb;pdb.set_trace()
-        landmarks_pre = landmarks_pre_tensor.numpy()
+        # import pdb;pdb.set_trace()
+        outputs = test_step(model, image_batch)
+        # import pdb;pdb.set_trace()
+        # landmarks_pre = outputs[0].numpy()
+        landmarks_pre = (outputs[0] + mean_shape).numpy()
+        if train_stage == 'stage2':
+            landmarks_pre += outputs[1].numpy()
 
         for k in range(len(landmarks_pre)):
             all_num += 1
@@ -118,7 +114,7 @@ def test(batch_test_dataset, num_test_file, model, args, mean_shape):
 
             annotate_landmarks_pre = one_landmark_pre.reshape(-1, 2) * args.image_size
             img_tmp = one_image.numpy().copy()
-            img_tmp = (img_tmp * 256)
+            img_tmp = (img_tmp * 127.5) + 127.5
             for (x, y) in annotate_landmarks_pre.astype(np.int32):
                 cv2.circle(img_tmp, (x, y), 1, (0, 255, 0), 1)
             print(os.path.join(args.out_dir, str(all_num)+".jpg"))
@@ -240,7 +236,8 @@ def parse_arguments(argv):
     parser.add_argument('--depth_multi', type=float, default=1)
     parser.add_argument('--out_dir', type=str, default='sample_result')
     parser.add_argument('--num_quant', type=int, default=64)
-    parser.add_argument('--tfrecords_dir', type=str, default='/data/tfrecords')
+    parser.add_argument('--tfrecords_dir', type=str, default='./tfrecords_xin')
+    # parser.add_argument('--tfrecords_dir', type=str, default='./tfrecords_xin_gray')
     parser.add_argument('--is_augment', type=str2bool,
                         default=False, help='Whether to augment')
 

@@ -8,15 +8,26 @@ import time
 import gc
 import sys
 import os
-# from XinNing2020_tf2 import XinNingNetwork
-from pfld_tf2 import PFLDBackbone
-from pfld_tf2 import PFLDAuxiliary
+# from pfld_tf2 import PFLDBackbone
+from pfld_tf2_fun import PFLDBackbone
+from pfld_tf2_fun import Bottleneck
+from pfld_tf2_fun import PFLDAuxiliary
 import tensorflow as tf
 from generate_data_tfrecords_tf2 import TfrecordsLoader
 from tensorflow.keras.layers import Input
 from tensorflow.keras import Model
+import tensorflow_model_optimization as tfmot
+quantize_scope = tfmot.quantization.keras.quantize_scope
+is_QUANT = True
 tf.keras.backend.set_floatx('float32')
 # from pfld import create_model
+
+
+def set_trainable(model, trainable):
+  model.trainable = trainable
+  if hasattr(model, 'layers'):
+    for layer in model.layers:
+      set_trainable(layer, trainable)  
 
 def wing_loss(landmarks, labels, w=10.0, epsilon=2.0):
     """
@@ -55,8 +66,8 @@ def main(args):
     # ============== get dataset ==============
     # use tfrecord
     print("============== get dataloader ==============")
-    train_loader = TfrecordsLoader(args.file_list, args, "train", "xin")
-    test_loader = TfrecordsLoader(args.test_list, args, "test", "xin")
+    train_loader = TfrecordsLoader(args.file_list, args, "train", "pfld")
+    test_loader = TfrecordsLoader(args.test_list, args, "test", "pfld")
     print("============ get tfrecord train data ===============")
     train_loader.create_tfrecord()
     num_train_file = train_loader.num_file
@@ -77,21 +88,26 @@ def main(args):
 
     # ================== create models ================
     print("=================== create models ===============")
-    # model = XinNingNetwork(args.num_labels, args.image_size, mean_shape, train_stage)
-    model = PFLDBackbone(args.num_labels, args.image_size, args.depth_multi)
+    pfldbackbone = PFLDBackbone(args.num_labels, args.image_size, args.depth_multi)
     _in_shape = [args.image_size, args.image_size, 3]
+    print("_in_shape: ", _in_shape)
+    model = pfldbackbone.create_model(args, in_shape=_in_shape) # , training=True) 
+    # import pdb;pdb.set_trace()
+    if is_QUANT:
+        with quantize_scope({'Bottleneck': Bottleneck}):
+            # Use `quantize_apply` to actually make the model quantization aware.
+            model = tfmot.quantization.keras.quantize_apply(model)
     print("features3 will be: ")
     print(((args.image_size /2) - 2) / 2)
     print(64 * args.depth_multi)
-    model.build(input_shape=(None,_in_shape[0],_in_shape[1],_in_shape[2])) # , training=True) 
-    model.summary()
-    aux_model = PFLDAuxiliary(args.num_labels, args.image_size, args.depth_multi)
+    # regularizer = tf.keras.regularizers.l2(cfg.TRAIN.WEIGHT_DECAY / 2)
+    # model.summary()
+    pfldaux = PFLDAuxiliary(args.num_labels, args.image_size, args.depth_multi)
     aux_in_w = int(((args.image_size /2) - 2) / 2)
     aux_in_a = int(64 * args.depth_multi)
-    aux_model.build(input_shape=(None, aux_in_w, aux_in_w, aux_in_a)) # , training=True) 
-    aux_model.summary()
+    _in_shape = [aux_in_w, aux_in_w, aux_in_a]
+    aux_model = pfldaux.create_model(args, in_shape=_in_shape) # , training=True) 
     # import pdb;pdb.set_trace()
-    print("_in_shape: ", _in_shape)
     #get_model_summary(model, aux_model, _in_shape)
 
     def loss_objects(landmarks_pre, euler_angles_pre, targets, L2_losses):
@@ -127,7 +143,42 @@ def main(args):
         debug_list.append(tf.reduce_mean(loss_sum))
 
         return loss_sum, L2_loss, debug_list
+    """
 
+    def loss_objects(preds, labels, L2_losses):
+        debug_list = []
+        debug_list.append(landmarks_pre)
+
+        landmark_batch, euler_batch = targets[0], targets[1]
+        # attributes_w_n = tf.to_float(attribute_batch[:, 1:6])
+        # _num = attributes_w_n.shape[0]
+        # mat_ratio = tf.reduce_mean(attributes_w_n, axis=0)
+        # mat_ratio = tf.map_fn(lambda x: (tf.cond(x > 0, lambda: 1 / x, lambda: float(args.batch_size))), mat_ratio)
+        # attributes_w_n = tf.convert_to_tensor(attributes_w_n * mat_ratio)
+        # attributes_w_n = tf.reduce_sum(attributes_w_n, axis=1)
+
+        L2_loss = tf.add_n(L2_losses)
+        _sum_k = tf.reduce_sum(tf.map_fn(lambda x: 1 - tf.cos(abs(x)), euler_batch - euler_angles_pre), axis=1)
+        # default loss
+        # print("=== default loss ===")
+        # loss_sum = tf.reduce_sum(tf.square(landmark_batch - landmarks_pre), axis=1)
+        _landmarks_pre = tf.reshape(landmarks_pre, [-1, args.num_labels, 2])
+        _landmark_batch = tf.reshape(landmark_batch, [-1, args.num_labels, 2])
+        # import pdb;pdb.set_trace()
+        # wing loss
+        print("=== wing loss ===")
+        wing_losses, debug_l = wing_loss(_landmarks_pre, _landmark_batch)
+        loss_sum = tf.reduce_sum(wing_losses, axis=[1, 2])
+        # summarize
+        loss_sum = tf.reduce_mean(loss_sum * _sum_k)#  * attributes_w_n)
+        loss_sum += L2_loss
+        debug_list.append(landmark_batch - landmarks_pre)
+        debug_list.append(tf.square(landmark_batch - landmarks_pre))
+        debug_list.append(tf.reduce_sum(tf.square(landmark_batch - landmarks_pre), axis=1))
+        debug_list.append(tf.reduce_mean(loss_sum))
+
+        return loss_sum, L2_loss, debug_list
+    """
     boundaries = [
         int(bound) * epoch_size for bound in args.lr_epoch.split(',')]
     lr_sc = [args.learning_rate * (0.1 ** b_i)
@@ -136,17 +187,6 @@ def main(args):
     learning_rate_fn = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
         boundaries, lr_sc)
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate_fn(0))
-
-    @tf.function
-    def train_step(inputs, targets):
-        with tf.GradientTape() as tape:
-            features, landmarks = model(inputs, training=True)
-            euler_angles_pre = aux_model(features, training=True)
-            loss_value, L2_loss, debug_list = loss_objects(landmarks, euler_angles_pre, targets, model.losses)
-
-        gradients = tape.gradient(loss_value, model.trainable_variables)
-        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-        return loss_value, L2_loss, debug_list
 
     # ============ resotre pretrain =============
     print("================= resotre pretrain if exist =================")
@@ -167,13 +207,20 @@ def main(args):
         print("no pretrained exist")
         epoch_start = 0
     manager = tf.train.CheckpointManager(ckpt, args.model_dir, max_to_keep=None)
+    #model.compile(optimizer=optimizer, loss=loss_objects, metrics=['mae'])
+    #tf.keras.utils.plot_model(model, show_shapes=True)
 
-    # model.compile(
-    #     optimizer=optimizer,
-    #     # I used logits as output from the last layer, hence this
-    #     loss=loss_objects,
-    #     metrics=['mae']
-    # )
+    @tf.function
+    def train_step(inputs, targets):
+        with tf.GradientTape() as tape:
+            features, landmarks = model(inputs, training=True)
+            euler_angles_pre = aux_model(features, training=True)
+            loss_value, L2_loss, debug_list = loss_objects(landmarks, euler_angles_pre, targets, model.losses)
+
+        gradients = tape.gradient(loss_value, model.trainable_variables)
+        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+        return loss_value, L2_loss, debug_list
+
     # import pdb; pdb.set_trace()
     all_step = epoch_start * epoch_size
     print("all_step: ", all_step)
@@ -200,13 +247,14 @@ def main(args):
             print("get train_dataset")
             batch_train_dataset = train_dataset.batch(args.batch_size)
             print("get batch_train_dataset")
+            #model.fit(batch_train_dataset, train_labels, epochs=2, validation_split=0.1,)
+
             for batch_i, (image_batch, landmarks_batch, _, euler_batch) in enumerate(batch_train_dataset):
                 # start = time.time()
                 # import pdb; pdb.set_trace()
-                losses, L2_loss, debug_list = train_step(
-                    image_batch, [landmarks_batch, euler_batch])
+                losses, L2_loss, debug_list = train_step(image_batch, [landmarks_batch, euler_batch])
                 # print("trainable v num: ", len(model.trainable_variables))
-                # print("elapsed: ", time.time() - start)
+                # d: ", time.time() - start)
                 if ((batch_i + 1) % 10) == 0 or (batch_i + 1) == epoch_size:
                     Epoch = 'Epoch:[{:<4}][{:<4}/{:<4}][{:<4}/{:<4}]'.format(
                         epoch, record_id + 1, train_loader.num_records, batch_num, epoch_size)
@@ -227,15 +275,27 @@ def main(args):
         savedmodel_path = os.path.join(model_dir, 'SavedModel/')
         tf.saved_model.save(model, savedmodel_path)
         print("save SavedModel: {}".format(savedmodel_path))
-        converter = tf.lite.TFLiteConverter.from_saved_model(savedmodel_path)
-        tflite_model = converter.convert()
-        with open(os.path.join(model_dir, "xinning.tflite"), 'wb') as f:
-            f.write(tflite_model)
-        print("save tflite: {}".format(os.path.join(model_dir, "xinning.tflite")))
+        if is_QUANT:
+            converter = tf.lite.TFLiteConverter.from_saved_model(savedmodel_path)
+            converter.optimizations = [tf.lite.Optimize.DEFAULT]
+            tflite_model = converter.convert()
+            with open(os.path.join(model_dir, "q_pfld.tflite"), 'wb') as f:
+                f.write(tflite_model)
+            converter_from_keras = tf.lite.TFLiteConverter.from_keras_model(model)
+            converter_from_keras.optimizations = [tf.lite.Optimize.DEFAULT]
+            tflite_model = converter_from_keras.convert()
+            with open(os.path.join(model_dir, "q_pfld_from_keras.tflite"), 'wb') as f:
+                f.write(tflite_model)
+        else:
+            converter = tf.lite.TFLiteConverter.from_saved_model(savedmodel_path)
+            tflite_model = converter.convert()
+            with open(os.path.join(model_dir, "pfld.tflite"), 'wb') as f:
+                f.write(tflite_model)
+        print("save tflite: {}".format(os.path.join(model_dir, "pfld.tflite")))
         print("trainable v num: ", len(model.trainable_variables))
         print("elapsed epoch: ", time.time() - start_epoch)
 
-        if epoch % 20 == 0 and epoch != 0 and epoch > 0:
+        if epoch % 20 == 0:# and epoch != 0 and epoch > 0:
             # import pdb;pdb.set_trace()
             print("test start")
             start = time.time()
@@ -245,7 +305,7 @@ def main(args):
 
 @tf.function
 def test_step(model, image_batch):
-    return model(image_batch, training=False)[0]
+    return model(image_batch, training=False)
 
 def test(batch_test_dataset, num_test_file, model, args, mean_shape, train_stage):
     loss_sum = 0
@@ -257,13 +317,8 @@ def test(batch_test_dataset, num_test_file, model, args, mean_shape, train_stage
     print("test epoch size: ", epoch_size)
     for i, (image_batch, landmarks_batch, attribute_batch, euler_batch) in enumerate(batch_test_dataset):  # batch_num
         print("start epoch: ", i)
-        outputs = test_step(model, image_batch)
-        # import pdb;pdb.set_trace()
-        # landmarks_pre = outputs[0].numpy()
-        landmarks_pre = (outputs[0] + mean_shape).numpy()
-        if train_stage == 'stage2':
-            landmarks_pre += outputs[1].numpy()
-            # landmarks_pre = outputs[1].numpy()
+        _, landmarks_pre_tensor  = test_step(model, image_batch)
+        landmarks_pre = landmarks_pre_tensor.numpy()
         diff = landmarks_pre - landmarks_batch
         loss = np.sum(diff * diff)
         loss_sum += loss
@@ -373,8 +428,7 @@ def parse_arguments(argv):
     parser.add_argument('--debug', type=str, default='False')
     parser.add_argument('--depth_multi', type=float, default=1)
     parser.add_argument('--num_quant', type=int, default=64)
-    parser.add_argument('--tfrecords_dir', type=str, default='./tfrecords_xin')
-    # parser.add_argument('--tfrecords_dir', type=str, default='./tfrecords_xin_gray')
+    parser.add_argument('--tfrecords_dir', type=str, default='/data/tfrecords')
     parser.add_argument('--is_augment', type=str2bool,
                         default=False, help='Whether to augment')
 

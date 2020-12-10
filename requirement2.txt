@@ -59,6 +59,7 @@ six
 subprocess32
 termcolor
 tensorflow_addons
+tensorflow-model-optimization
 threadpoolctl
 toolz
 torch
